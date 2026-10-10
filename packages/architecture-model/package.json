@@ -1,0 +1,18 @@
+{
+  "name": "@swiftbuild/architecture-model",
+  "version": "0.0.1",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@swiftbuild/architecture-schema": "workspace:*"
+  },
+  "devDependencies": {
+    "@swiftbuild/components-core": "workspace:*"
+  }
+}

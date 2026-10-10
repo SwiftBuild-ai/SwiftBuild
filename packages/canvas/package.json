@@ -1,0 +1,30 @@
+{
+  "version": "0.0.1",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.tsx",
+    "./styles.css": "./src/styles.css"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit"
+  },
+  "name": "@swiftbuild/canvas",
+  "dependencies": {
+    "@swiftbuild/architecture-schema": "workspace:*",
+    "@swiftbuild/architecture-model": "workspace:*",
+    "@swiftbuild/graph-engine": "workspace:*",
+    "@swiftbuild/components-core": "workspace:*",
+    "@swiftbuild/ui": "workspace:*",
+    "@swiftbuild/design-tokens": "workspace:*",
+    "@xyflow/react": "12.12.0",
+    "zustand": "^5.0.8",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "lucide-react": "^0.577.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2"
+  }
+}

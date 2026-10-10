@@ -1,0 +1,41 @@
+{
+  "name": "swiftbuild",
+  "version": "0.0.1",
+  "private": true,
+  "packageManager": "pnpm@10.28.1",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "scripts": {
+    "dev": "pnpm dev:web",
+    "dev:web": "pnpm --filter @swiftbuild/web dev",
+    "build": "turbo run build",
+    "lint": "eslint . && pnpm boundaries",
+    "boundaries": "node tooling/scripts/boundaries.mjs",
+    "typecheck": "turbo run typecheck && tsc --noEmit -p tsconfig.tooling.json",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:e2e": "playwright test",
+    "storybook": "pnpm --filter @swiftbuild/ui storybook",
+    "build:storybook": "pnpm --filter @swiftbuild/ui build-storybook",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "clean": "node tooling/scripts/clean.mjs",
+    "changeset": "changeset"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "@types/node": "^24.10.0",
+    "eslint": "^10.0.0",
+    "@eslint/js": "^10.0.0",
+    "typescript-eslint": "^8.46.0",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "globals": "^16.5.0",
+    "prettier": "^3.6.2",
+    "turbo": "^2.6.0",
+    "vitest": "^3.2.4",
+    "@playwright/test": "^1.56.0",
+    "@changesets/cli": "^2.29.7"
+  }
+}

@@ -1,0 +1,20 @@
+name: Bug report
+description: Describe a reproducible problem.
+body:
+  - type: markdown
+    attributes:
+      value: 'Do not report vulnerabilities here. Read SECURITY.md for private reporting prerequisites.'
+  - type: textarea
+    id: problem
+    attributes:
+      label: Context and proposed outcome
+      description: Describe a reproducible problem.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence and verification
+      description: Include reproduction steps, examples, expected behavior, or acceptance criteria. Remove private data.
+    validations:
+      required: true

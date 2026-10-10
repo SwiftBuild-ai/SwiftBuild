@@ -1,0 +1,457 @@
+{
+  "schemaVersion": "1.0",
+  "project": {
+    "id": "project-local",
+    "name": "Commerce platform",
+    "description": "A resilient foundation for an online storefront."
+  },
+  "architecture": {
+    "id": "architecture-main",
+    "name": "System architecture",
+    "description": ""
+  },
+  "components": [
+    {
+      "id": "core.client",
+      "name": "Client",
+      "description": "A user-facing application or external caller.",
+      "category": "client",
+      "version": "1.0.0",
+      "schemaVersion": "1.0",
+      "capabilities": ["request-origin"],
+      "configurationSchema": [
+        {
+          "key": "platform",
+          "label": "Platform",
+          "type": "select",
+          "required": true,
+          "options": ["Web", "Mobile", "External"],
+          "default": "Web"
+        }
+      ],
+      "ports": [
+        {
+          "id": "out",
+          "label": "Requests",
+          "direction": "output",
+          "relationships": ["request", "public-access"]
+        }
+      ],
+      "constraints": [],
+      "documentation": "Generic client architecture primitive.",
+      "icon": "client",
+      "tags": ["client", "generic"],
+      "metadata": {}
+    },
+    {
+      "id": "core.service",
+      "name": "Service",
+      "description": "A stateless workload with explicit dependencies.",
+      "category": "compute",
+      "version": "1.0.0",
+      "schemaVersion": "1.0",
+      "capabilities": ["compute", "stateless"],
+      "configurationSchema": [
+        {
+          "key": "runtime",
+          "label": "Runtime",
+          "type": "select",
+          "required": true,
+          "options": ["Node.js", "Python", "Go", "Java", "Other"],
+          "default": "Node.js"
+        },
+        {
+          "key": "replicas",
+          "label": "Replicas",
+          "type": "number",
+          "required": true,
+          "min": 1,
+          "max": 1000,
+          "default": 2
+        },
+        {
+          "key": "healthChecks",
+          "label": "Health checks",
+          "type": "boolean",
+          "required": true,
+          "default": true
+        },
+        {
+          "key": "region",
+          "label": "Region",
+          "type": "string",
+          "required": true,
+          "default": "Primary"
+        }
+      ],
+      "ports": [
+        {
+          "id": "in",
+          "label": "Requests",
+          "direction": "input",
+          "relationships": ["request", "public-access"]
+        },
+        {
+          "id": "out",
+          "label": "Dependencies",
+          "direction": "output",
+          "relationships": [
+            "request",
+            "cache-lookup",
+            "database-connection",
+            "async-message"
+          ]
+        }
+      ],
+      "constraints": [],
+      "documentation": "Generic service architecture primitive.",
+      "icon": "service",
+      "tags": ["compute", "generic"],
+      "metadata": {}
+    },
+    {
+      "id": "core.database",
+      "name": "Database",
+      "description": "Durable data with consistency and replication.",
+      "category": "database",
+      "version": "1.0.0",
+      "schemaVersion": "1.0",
+      "capabilities": ["durable-storage", "transactions"],
+      "configurationSchema": [
+        {
+          "key": "engine",
+          "label": "Engine",
+          "type": "select",
+          "required": true,
+          "options": ["PostgreSQL", "MySQL", "Document", "Key-value"],
+          "default": "PostgreSQL"
+        },
+        {
+          "key": "replicas",
+          "label": "Replicas",
+          "type": "number",
+          "required": true,
+          "min": 1,
+          "max": 100,
+          "default": 1
+        },
+        {
+          "key": "consistency",
+          "label": "Consistency",
+          "type": "select",
+          "required": true,
+          "options": ["Strong", "Eventual"],
+          "default": "Strong"
+        },
+        {
+          "key": "backups",
+          "label": "Backups",
+          "type": "boolean",
+          "required": true,
+          "default": true
+        },
+        {
+          "key": "storageGB",
+          "label": "Storage (GB)",
+          "type": "number",
+          "required": true,
+          "min": 1,
+          "default": 100
+        }
+      ],
+      "ports": [
+        {
+          "id": "in",
+          "label": "Connections",
+          "direction": "input",
+          "relationships": ["database-connection"]
+        },
+        {
+          "id": "replication",
+          "label": "Replication",
+          "direction": "output",
+          "relationships": ["replication"]
+        },
+        {
+          "id": "replica",
+          "label": "Replica input",
+          "direction": "input",
+          "relationships": ["replication"]
+        }
+      ],
+      "constraints": [],
+      "documentation": "Generic database architecture primitive.",
+      "icon": "database",
+      "tags": ["database", "generic"],
+      "metadata": {}
+    },
+    {
+      "id": "core.cache",
+      "name": "Cache",
+      "description": "Fast reads with an explicit expiration strategy.",
+      "category": "cache",
+      "version": "1.0.0",
+      "schemaVersion": "1.0",
+      "capabilities": ["ephemeral-storage", "low-latency"],
+      "configurationSchema": [
+        {
+          "key": "ttlSeconds",
+          "label": "TTL (seconds)",
+          "type": "number",
+          "required": true,
+          "min": 1,
+          "default": 300
+        },
+        {
+          "key": "eviction",
+          "label": "Eviction policy",
+          "type": "select",
+          "required": true,
+          "options": ["LRU", "LFU", "FIFO"],
+          "default": "LRU"
+        },
+        {
+          "key": "memoryGB",
+          "label": "Memory (GB)",
+          "type": "number",
+          "required": true,
+          "min": 0.1,
+          "default": 2
+        }
+      ],
+      "ports": [
+        {
+          "id": "in",
+          "label": "Lookups",
+          "direction": "input",
+          "relationships": ["cache-lookup"]
+        }
+      ],
+      "constraints": [],
+      "documentation": "Generic cache architecture primitive.",
+      "icon": "cache",
+      "tags": ["cache", "generic"],
+      "metadata": {}
+    },
+    {
+      "id": "core.queue",
+      "name": "Queue",
+      "description": "Asynchronous delivery between independent services.",
+      "category": "messaging",
+      "version": "1.0.0",
+      "schemaVersion": "1.0",
+      "capabilities": ["asynchronous-delivery"],
+      "configurationSchema": [
+        {
+          "key": "delivery",
+          "label": "Delivery",
+          "type": "select",
+          "required": true,
+          "options": ["At least once", "At most once"],
+          "default": "At least once"
+        },
+        {
+          "key": "deadLetter",
+          "label": "Dead-letter queue",
+          "type": "boolean",
+          "required": true,
+          "default": true
+        },
+        {
+          "key": "retentionHours",
+          "label": "Retention (hours)",
+          "type": "number",
+          "required": true,
+          "min": 1,
+          "default": 24
+        }
+      ],
+      "ports": [
+        {
+          "id": "in",
+          "label": "Publish",
+          "direction": "input",
+          "relationships": ["async-message"]
+        },
+        {
+          "id": "out",
+          "label": "Consume",
+          "direction": "output",
+          "relationships": ["async-message"]
+        }
+      ],
+      "constraints": [],
+      "documentation": "Generic queue architecture primitive.",
+      "icon": "queue",
+      "tags": ["messaging", "generic"],
+      "metadata": {}
+    },
+    {
+      "id": "core.boundary",
+      "name": "Boundary",
+      "description": "A deployment or trust boundary that contains components.",
+      "category": "boundary",
+      "version": "1.0.0",
+      "schemaVersion": "1.0",
+      "capabilities": ["containment"],
+      "configurationSchema": [
+        {
+          "key": "kind",
+          "label": "Boundary type",
+          "type": "select",
+          "required": true,
+          "options": ["Deployment", "Network", "Trust"],
+          "default": "Deployment"
+        },
+        {
+          "key": "region",
+          "label": "Region",
+          "type": "string",
+          "required": true,
+          "default": "Primary"
+        }
+      ],
+      "ports": [],
+      "constraints": [],
+      "documentation": "Generic boundary architecture primitive.",
+      "icon": "boundary",
+      "tags": ["boundary", "generic"],
+      "metadata": {}
+    }
+  ],
+  "nodes": [
+    {
+      "id": "client",
+      "componentId": "core.client",
+      "componentVersion": "1.0.0",
+      "name": "Web application",
+      "configuration": {
+        "platform": "Web"
+      },
+      "metadata": {}
+    },
+    {
+      "id": "service",
+      "componentId": "core.service",
+      "componentVersion": "1.0.0",
+      "name": "Storefront API",
+      "configuration": {
+        "runtime": "Node.js",
+        "replicas": 2,
+        "healthChecks": true,
+        "region": "Primary"
+      },
+      "metadata": {}
+    },
+    {
+      "id": "cache",
+      "componentId": "core.cache",
+      "componentVersion": "1.0.0",
+      "name": "Session cache",
+      "configuration": {
+        "ttlSeconds": 300,
+        "eviction": "LRU",
+        "memoryGB": 2
+      },
+      "metadata": {}
+    },
+    {
+      "id": "database",
+      "componentId": "core.database",
+      "componentVersion": "1.0.0",
+      "name": "Primary database",
+      "configuration": {
+        "engine": "PostgreSQL",
+        "replicas": 1,
+        "consistency": "Strong",
+        "backups": true,
+        "storageGB": 100
+      },
+      "metadata": {}
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-request",
+      "source": {
+        "nodeId": "client",
+        "portId": "out"
+      },
+      "target": {
+        "nodeId": "service",
+        "portId": "in"
+      },
+      "relationship": "request",
+      "label": "HTTPS",
+      "metadata": {}
+    },
+    {
+      "id": "edge-cache",
+      "source": {
+        "nodeId": "service",
+        "portId": "out"
+      },
+      "target": {
+        "nodeId": "cache",
+        "portId": "in"
+      },
+      "relationship": "cache-lookup",
+      "label": "Cache lookup",
+      "metadata": {}
+    },
+    {
+      "id": "edge-database",
+      "source": {
+        "nodeId": "service",
+        "portId": "out"
+      },
+      "target": {
+        "nodeId": "database",
+        "portId": "in"
+      },
+      "relationship": "database-connection",
+      "label": "SQL connection",
+      "metadata": {}
+    }
+  ],
+  "views": [
+    {
+      "id": "view-system",
+      "name": "System view",
+      "nodeIds": ["client", "service", "cache", "database"],
+      "layout": {
+        "client": {
+          "x": 60,
+          "y": 220
+        },
+        "service": {
+          "x": 400,
+          "y": 220
+        },
+        "cache": {
+          "x": 770,
+          "y": 100
+        },
+        "database": {
+          "x": 770,
+          "y": 340
+        }
+      },
+      "viewport": {
+        "x": 0,
+        "y": 0,
+        "zoom": 1
+      }
+    }
+  ],
+  "requirements": [],
+  "nonFunctionalRequirements": [],
+  "decisions": [],
+  "estimates": [],
+  "environments": [],
+  "deployments": [],
+  "annotations": [],
+  "findings": [],
+  "versions": [],
+  "metadata": {}
+}

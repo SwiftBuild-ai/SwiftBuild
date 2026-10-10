@@ -1,0 +1,5 @@
+SwiftBuild
+
+SwiftBuild is licensed under Apache-2.0. Third-party dependencies retain their own licenses.
+
+The interface uses Inter and IBM Plex Mono under SIL Open Font License 1.1 and Lucide icons under ISC/MIT terms. Their original notices are available in apps/web/public/licenses and are included in the web distribution.

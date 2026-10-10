@@ -1,0 +1,116 @@
+:root,
+[data-theme='light'] {
+  color-scheme: light;
+  --font-sans: var(--font-inter, 'Inter'), sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+  --radius: 8px;
+  --surface: #ffffff;
+  --canvas: #f4f4f5;
+  --panel: #fff;
+  --raised: #f4f4f5;
+  --hover: #eeeeef;
+  --border: #e4e4e7;
+  --text: #18181b;
+  --muted: #71717a;
+  --subtle: #71717a;
+  --accent: #18181b;
+  --accent-ink: #fff;
+  --focus: #7c3aed;
+  --warning: #8b5a07;
+  --error: #b82938;
+  --success: #146e5c;
+  --selection: #8b5cf6;
+  --client: #345fac;
+  --compute: #146e5c;
+  --database: #7652b3;
+  --cache: #8d650d;
+  --messaging: #a13e64;
+  --boundary: #657680;
+  --shadow: 0 12px 40px #23394718;
+  --grid: #aaaab9;
+}
+[data-theme='dark'] {
+  color-scheme: dark;
+  --surface: #15181b;
+  --canvas: #101315;
+  --panel: #191d21;
+  --raised: #22272c;
+  --hover: #292f35;
+  --border: #30373e;
+  --text: #e9edef;
+  --muted: #a2adb6;
+  --subtle: #8b98a2;
+  --accent: #71dcc5;
+  --accent-ink: #0b2922;
+  --focus: #91efe0;
+  --warning: #f3c875;
+  --error: #ff9393;
+  --success: #71dcc5;
+  --selection: #71dcc5;
+  --client: #9bb9ff;
+  --compute: #71dcc5;
+  --database: #c4afff;
+  --cache: #f3cb80;
+  --messaging: #efa2be;
+  --boundary: #9baab8;
+  --radius: 8px;
+  --font-sans: var(--font-inter, 'Inter'), sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+  --shadow: 0 12px 40px #0005;
+  --grid: #293036;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background: var(--canvas);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 14px;
+}
+button,
+input,
+select {
+  font: inherit;
+}
+button,
+a,
+input,
+select {
+  outline-offset: 4px;
+}
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--focus);
+}
+button {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+button,
+input,
+select {
+  color: var(--text);
+}
+a {
+  color: var(--accent);
+}
+::selection {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,0 +1,8 @@
+services:
+  web:
+    build: .
+    ports:
+      - '${PORT:-3000}:3000'
+    environment:
+      NEXT_TELEMETRY_DISABLED: '1'
+    restart: unless-stopped

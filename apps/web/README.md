@@ -1,0 +1,11 @@
+# SwiftBuild web host
+
+Server-rendered application shell, account screens and same-origin route handlers. Server configuration and sessions stay in server-only modules. The default root workbench uses independent browser-local storage. See [setup](../../docs/self-hosting/README.md) and [API contracts](../../docs/server-api.md).
+
+The client project adapter is an integration foundation; project-list/editor screens still need to mount it. `ServerWorkspace` receives an authorized current snapshot, a recovery store and a request transport. It saves validated local recovery before any server mutation, sends strong revision tags and retains operation IDs/payloads after uncertain responses. A retained operation is resolved before sending newer edits. Conflicts and access changes stop network writes while preserving subsequent local work. Viewer previews never write to the server.
+
+`BrowserProjectRecovery` stores versioned records in a separate `swiftbuild-server-recovery` database, under user/project keys, with transactional stale-tab rejection. Records retain the latest archive and any uncertain operation archive. They preserve complete checkpoints and run evidence. These keys isolate records; server authorization still comes from sessions and transactional membership checks. Recovery is browser/origin-specific and is not a server backup.
+
+Before mounting an editor, inspect recovery and obtain an explicit choice when it differs from the authorized snapshot or contains an unresolved different operation. Export recovery, create a separate project, or explicitly open the current server revision; never silently replace either copy. Mount a new adapter/workbench for each user/project. Confirmed server save labels are valid only when `write` resolves; viewer writes resolve only for a local recovery label. Account sign-out and shared-device recovery controls must be integrated with the project screens before this adapter is exposed as a completed workflow.
+
+Unit tests exercise lost responses, retained operation ordering, conflict preservation, recovery storage failure, viewer previews, uncertain reverted edits, invalid confirmations and transactional cache isolation. They verify the protocol against controlled transports; a real production browser/server workflow remains required for the integration slice.

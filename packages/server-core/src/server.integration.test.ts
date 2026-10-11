@@ -3,3 +3,4 @@
 import './projects.integration.test.suite';
 import './identity.integration.test.suite';
 import './identity-oidc.integration.test.suite';
+import './http.integration.test.suite';

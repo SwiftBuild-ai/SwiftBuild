@@ -1,6 +1,6 @@
 # SwiftBuild full product roadmap
 
-Status reviewed October 11, 2026. SwiftBuild's target is a complete open-source architecture engineering platform for individual developers, architects and engineering teams: design, validate, simulate, review, version and maintain systems. Every planned capability below remains part of that target. No delivery dates or completed server capabilities are implied.
+Status reviewed October 12, 2026. SwiftBuild's target is a complete open-source architecture engineering platform for individual developers, architects and engineering teams: design, validate, simulate, review, version and maintain systems. Every planned capability below remains part of that target. No delivery dates are implied; partial implementation does not complete a milestone.
 
 ## Implemented foundation
 
@@ -8,13 +8,15 @@ Native format 1.1 with explicit 1.0 migration; embedded definitions and separate
 
 The catalog contains 35 concrete technology/provider definitions, 26 cataloged generic definitions and eight retained core primitives. Search, aliases, favorites, recents, details, keyboard/drag insertion, contextual configuration, local declarative JSON packs and explicit legacy conversion are implemented. Neutral black/zinc dark surfaces are the default; light mode and restored preferences remain available.
 
-The engines support declared service, database, cache, queue and router behavior. Recursive feedback paths, unattributed initial backlog, absent measurements and out-of-range curves remain unevaluated. Browser storage is the only project persistence today. See [current status](status.md) and [model limitations](engineering/capacity.md).
+The engines support declared service, database, cache, queue and router behavior. Recursive feedback paths, unattributed initial backlog, absent measurements and out-of-range curves remain unevaluated. Browser storage remains the current editor persistence. Optional transactional server projects, explicit migrations, invite-only identity, authorization and revision APIs are implemented; account screens support operator-issued links without a mail server. See [current status](status.md), [server API](server-api.md) and [model limitations](engineering/capacity.md).
 
 ## Dependency order and completion gates
 
-All milestones below are **planned**. The critical path is durable authenticated server projects → shared review → safe concurrent editing. Architecture-as-code and calibrated modeling can proceed alongside team work after their stated prerequisites. Implement coherent vertical slices and preserve existing browser workflows throughout.
+Milestone 1 is **in progress**; milestones 2–8 are **planned**. The critical path is durable authenticated server projects → shared review → safe concurrent editing. Architecture-as-code and calibrated modeling can proceed alongside team work after their stated prerequisites. Implement coherent vertical slices and preserve existing browser workflows throughout.
 
 ### 1. Durable server projects and operational foundation
+
+Status: **in progress**. Implemented slices: shared archive contracts, checksum-verified transactional migrations, durable server revisions and audit events, invite-only local/organizational identity, workspace role enforcement, operator-issued recovery, authenticated HTTP routes and account screens. Remaining gates include project-list/editor integration, explicit local-draft promotion, browser recovery/conflict UX, repeatable full server deployment, least-privilege role provisioning and tested database backup/restore. Accepted storage/identity decisions and implementation evidence are linked from [current status](status.md).
 
 Prerequisite: retain current schema, migration, archive and injected storage contracts; record the server persistence and security design before implementing it.
 

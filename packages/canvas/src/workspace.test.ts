@@ -83,3 +83,24 @@ it('retains the prior workspace when an in-flight transaction is interrupted', a
     spy.mockRestore();
   }
 });
+it('keeps namespaced recovery archives independent of the browser draft and other users', async () => {
+  const factory = new IDBFactory();
+  const draft = new IndexedWorkspace(factory);
+  const first = new IndexedWorkspace(factory, 'server:user-one:project-one');
+  const second = new IndexedWorkspace(factory, 'server:user-two:project-one');
+  const localArchive = workspaceFor(blankDocument());
+  const recovery = workspaceFor(blankDocument());
+  recovery.document.architecture.name = 'Independent recovery';
+  await draft.write(localArchive);
+  await first.write(recovery);
+  expect(await draft.read()).toMatchObject(localArchive);
+  expect(await first.read()).toMatchObject(recovery);
+  expect(await second.read()).toBeNull();
+  await second.write(localArchive);
+  expect(await first.read()).toMatchObject(recovery);
+  const stale = new IndexedWorkspace(factory, 'server:user-one:project-one');
+  await stale.read();
+  await first.write(localArchive);
+  await expect(stale.write(recovery)).rejects.toThrow('changed in another tab');
+  expect(await draft.read()).toMatchObject(localArchive);
+});

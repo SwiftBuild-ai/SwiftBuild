@@ -82,7 +82,18 @@ import { CatalogSidebar, ObjectSidebar } from './catalog';
 import { recordCatalogUse } from './catalog-preferences';
 import { StoreContext, useEditor, GraphCanvas, Inspector } from './graph';
 import { importDocument, MAX_IMPORT_BYTES, DRAFT_KEY } from './storage';
-function Editor() {
+export type WorkbenchStorage = {
+  createAdapter: () => WorkspaceAdapter;
+  savedLabel: string;
+  description: string;
+};
+export type WorkbenchProps = {
+  initialArchive?: ProjectArchive;
+  storage?: WorkbenchStorage;
+};
+function Editor({ initialArchive, storage }: WorkbenchProps) {
+  const savedLabel = storage?.savedLabel ?? 'Saved locally';
+  const activityLabel = storage ? savedLabel : 'Saved draft';
   const document = useEditor((s) => s.history.present);
   const selected = useEditor((s) => s.selected);
   const past = useEditor((s) => s.history.past.length);
@@ -134,8 +145,8 @@ function Editor() {
   const [activity, setActivity] = useState(false);
   const [section, setSection] = useState<EngineeringSection | null>(null);
   const [connectionDialog, setConnectionDialog] = useState(false);
-  const [workspace, setWorkspace] = useState<ProjectArchive>(() =>
-    workspaceFor(document),
+  const [workspace, setWorkspace] = useState<ProjectArchive>(
+    () => initialArchive ?? workspaceFor(document),
   );
   const [currentReport, setCurrentReport] = useState<CapacityReport | null>(
     null,
@@ -156,7 +167,9 @@ function Editor() {
     const hydrate = async () => {
       try {
         if (!workspaceAdapter.current)
-          workspaceAdapter.current = new IndexedWorkspace();
+          workspaceAdapter.current = storage
+            ? storage.createAdapter()
+            : new IndexedWorkspace();
       } catch (error) {
         setLocked(true);
         setStatus('Storage unavailable');
@@ -168,14 +181,14 @@ function Editor() {
       }
       const result = await loadWorkspace(
         workspaceAdapter.current,
-        readLegacyDraft,
+        storage ? () => null : readLegacyDraft,
       );
       if (!active) return;
       if (result.status === 'loaded') {
         replace(result.archive.document);
         setWorkspace(result.archive);
         setCurrentReport(result.archive.runs.at(-1) ?? null);
-        setStatus('Saved locally');
+        setStatus(savedLabel);
       } else if (result.status === 'error') {
         setLocked(true);
         setStatus('Draft recovery needed');
@@ -187,7 +200,7 @@ function Editor() {
     return () => {
       active = false;
     };
-  }, [replace, notify]);
+  }, [replace, notify, storage, savedLabel]);
   useEffect(() => {
     if (!hydrated || locked) return;
     const generation = ++saveGeneration.current;
@@ -204,7 +217,7 @@ function Editor() {
           if (!workspaceAdapter.current)
             throw new Error('IndexedDB unavailable.');
           await workspaceAdapter.current.write(archive);
-          if (generation === saveGeneration.current) setStatus('Saved locally');
+          if (generation === saveGeneration.current) setStatus(savedLabel);
           setEvents((previous) => [
             ...previous.slice(-19),
             {
@@ -213,7 +226,7 @@ function Editor() {
                 minute: '2-digit',
                 second: '2-digit',
               }),
-              message: `Saved draft · ${document.nodes.length} components · ${document.edges.length} connections`,
+              message: `${activityLabel} · ${document.nodes.length} components · ${document.edges.length} connections`,
             },
           ]);
         })
@@ -227,7 +240,15 @@ function Editor() {
         });
     }, 450);
     return () => clearTimeout(timer);
-  }, [document, workspace, hydrated, locked, notify]);
+  }, [
+    document,
+    workspace,
+    hydrated,
+    locked,
+    notify,
+    savedLabel,
+    activityLabel,
+  ]);
   useEffect(() => {
     setTheme(
       window.document.documentElement.dataset.theme === 'light'
@@ -894,7 +915,7 @@ function Editor() {
                 <ChevronRight size={17} />
               )}
               Logs
-              {status !== 'Saved locally' && status !== 'Loading draft' && (
+              {status !== savedLabel && status !== 'Loading draft' && (
                 <span className="activity-save-state">{status}</span>
               )}
             </Button>
@@ -1174,10 +1195,10 @@ function Editor() {
           </div>
         </div>
         <div className="settings-section">
-          <h3>Local workspace</h3>
+          <h3>{storage ? 'Project storage' : 'Local workspace'}</h3>
           <p>
-            Your draft stays in this browser. Export JSON to keep a portable
-            backup.
+            {storage?.description ??
+              'Your draft stays in this browser. Export JSON to keep a portable backup.'}
           </p>
           <Button onClick={exportJSON}>
             <Download size={15} />
@@ -1630,12 +1651,14 @@ function Editor() {
     </div>
   );
 }
-export function Workbench() {
-  const [store] = useState(createEditorStore);
+export function Workbench(props: WorkbenchProps = {}) {
+  const [store] = useState(() =>
+    createEditorStore(props.initialArchive?.document),
+  );
   return (
     <StoreContext.Provider value={store}>
       <ReactFlowProvider>
-        <Editor />
+        <Editor {...props} />
       </ReactFlowProvider>
     </StoreContext.Provider>
   );

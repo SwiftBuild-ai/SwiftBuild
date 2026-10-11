@@ -25,7 +25,8 @@
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "zod": "^4.6.5",
-    "zustand": "^5.0.8"
+    "zustand": "^5.0.8",
+    "@swiftbuild/project-format": "workspace:*"
   },
   "devDependencies": {
     "@types/react": "^19.2.2",

@@ -121,6 +121,9 @@ importers:
       '@swiftbuild/graph-engine':
         specifier: workspace:*
         version: link:../graph-engine
+      '@swiftbuild/project-format':
+        specifier: workspace:*
+        version: link:../project-format
       '@swiftbuild/rule-engine':
         specifier: workspace:*
         version: link:../rule-engine
@@ -204,6 +207,28 @@ importers:
       '@swiftbuild/architecture-schema':
         specifier: workspace:*
         version: link:../architecture-schema
+    devDependencies:
+      '@swiftbuild/components-core':
+        specifier: workspace:*
+        version: link:../components-core
+
+  packages/project-format:
+    dependencies:
+      '@swiftbuild/architecture-model':
+        specifier: workspace:*
+        version: link:../architecture-model
+      '@swiftbuild/architecture-schema':
+        specifier: workspace:*
+        version: link:../architecture-schema
+      '@swiftbuild/capacity-engine':
+        specifier: workspace:*
+        version: link:../capacity-engine
+      '@swiftbuild/graph-engine':
+        specifier: workspace:*
+        version: link:../graph-engine
+      zod:
+        specifier: ^4.6.5
+        version: 4.6.5
     devDependencies:
       '@swiftbuild/components-core':
         specifier: workspace:*

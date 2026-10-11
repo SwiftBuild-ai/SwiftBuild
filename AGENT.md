@@ -22,7 +22,7 @@ IDs are stable. Layout belongs only in views. Native format is 1.1 with explicit
 
 Keep the shell server-rendered and interactive canvas client-side. Use semantic tokens, accessible primitives, labeled actions, visible focus, reduced motion, and the parallel object list. Separate transient editor state from persisted documents. Use selective editor-store subscriptions. Commit a drag once.
 
-There is no server database. The injected browser adapter uses transactional IndexedDB, retained legacy drafts and optimistic storage revisions. Checkpoints remain outside current documents. The target product requires durable server persistence through an injected adapter and versioned relational database migrations; this is planned, not implemented. Never change database structures manually. Validate at server boundaries and enforce authorization server-side when introduced.
+Browser mode uses transactional IndexedDB, retained legacy drafts and optimistic storage revisions. Checkpoints remain outside current documents. `project-format` owns portable archive contracts. `server-core` owns explicit checksum-verified relational migrations, invite-only identity, transactional server projects and authenticated HTTP services; `apps/web` owns account screens and route integration. Core domain packages remain independent of authentication and hosting. Server project editor integration and operational backup/restore remain planned. Never change database structures manually. Derive actors from verified sessions, validate server input, and enforce active admission and workspace permissions inside storage transactions.
 
 ## Security and completion
 

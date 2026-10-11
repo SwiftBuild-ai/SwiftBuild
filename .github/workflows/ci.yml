@@ -14,6 +14,18 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    services:
+      database:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_PASSWORD: swiftbuild_test
+          POSTGRES_DB: swiftbuild_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -d swiftbuild_test"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      SWIFTBUILD_TEST_DATABASE_URL: postgresql://postgres:swiftbuild_test@127.0.0.1:5432/swiftbuild_test
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6

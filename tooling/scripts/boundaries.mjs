@@ -23,6 +23,7 @@ const allowed = {
     'graph-engine',
     'capacity-engine',
   ],
+  'server-core': ['project-format'],
   'design-tokens': [],
   ui: ['design-tokens'],
   canvas: [

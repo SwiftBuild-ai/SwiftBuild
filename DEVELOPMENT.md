@@ -15,6 +15,8 @@ Install E2E browsers with `pnpm exec playwright install chromium`. On Linux CI u
 
 No database or credentials are required. `.env.example` documents the web port. Local research, design notes, test results, and personal agent preferences are ignored. The pnpm lockfile is tracked.
 
-The browser draft uses one storage key and is specific to the origin. Export before clearing site data. Private security reporting must be configured before public publication.
+The browser workspace uses transactional IndexedDB and is specific to the origin. Migration retains the legacy localStorage draft. Export a project archive before clearing site data. Stale tabs cannot overwrite a newer storage revision; export in-memory work before reloading after a conflict. Private security reporting must be configured before public publication.
+
+`pnpm benchmark:capacity` exercises a 1,000-node topology and records hardware, timings, memory and event counts under ignored `.agent-work/`. Unit tests include real IndexedDB semantics through a test-only implementation. Engineering changes need numerical reference tests; browser changes need E2E, keyboard and responsive checks. See [engineering documentation](docs/engineering/README.md).
 
 After `pnpm build`, run `pnpm --filter @swiftbuild/web start` to serve the standalone production bundle. Stop this server before rebuilding on Windows; the running bundle directory can be locked.

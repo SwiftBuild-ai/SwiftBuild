@@ -5,6 +5,18 @@ const allowed = {
   'architecture-model': ['architecture-schema'],
   'graph-engine': ['architecture-schema', 'architecture-model'],
   'components-core': ['architecture-schema'],
+  'component-registry': ['architecture-schema', 'components-core'],
+  'capacity-engine': [
+    'architecture-schema',
+    'architecture-model',
+    'graph-engine',
+  ],
+  'rule-engine': [
+    'architecture-schema',
+    'architecture-model',
+    'graph-engine',
+    'capacity-engine',
+  ],
   'design-tokens': [],
   ui: ['design-tokens'],
   canvas: [
@@ -12,6 +24,9 @@ const allowed = {
     'architecture-model',
     'graph-engine',
     'components-core',
+    'component-registry',
+    'capacity-engine',
+    'rule-engine',
     'ui',
     'design-tokens',
   ],

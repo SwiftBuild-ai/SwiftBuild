@@ -3,6 +3,9 @@ import { readFile } from 'node:fs/promises';
 import { sampleDocument } from '../packages/components-core/src/index';
 const key = 'swiftbuild.draft.v1';
 async function ready(page: Page, withSample = true) {
+  await page.addInitScript(() =>
+    localStorage.setItem('swiftbuild.theme', 'light'),
+  );
   await page.goto('/');
   await expect(page.getByRole('status')).toHaveText('Saved locally');
   if (withSample && (await page.locator('.react-flow__node').count()) === 0) {
@@ -18,7 +21,25 @@ async function ready(page: Page, withSample = true) {
   }
 }
 async function stored(page: Page) {
-  return page.evaluate((k) => JSON.parse(localStorage.getItem(k)!), key);
+  return page.evaluate(
+    () =>
+      new Promise<ReturnType<typeof sampleDocument>>((resolve, reject) => {
+        const request = indexedDB.open('swiftbuild-workspace', 1);
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          const db = request.result;
+          const read = db
+            .transaction('workspace', 'readonly')
+            .objectStore('workspace')
+            .get('current');
+          read.onsuccess = () => {
+            resolve(read.result?.document);
+            db.close();
+          };
+          read.onerror = () => reject(read.error);
+        };
+      }),
+  );
 }
 async function selectObject(page: Page, name: string) {
   await page
@@ -49,14 +70,18 @@ test('configuration validation, undo/redo and refresh restoration', async ({
 }) => {
   await ready(page);
   await selectObject(page, 'Storefront API');
-  await page.getByLabel('Replicas', { exact: true }).fill('0');
+  await page
+    .getByRole('spinbutton', { name: 'Replicas', exact: true })
+    .fill('0');
   await page.getByRole('button', { name: 'Apply changes' }).click();
   await expect(
     page
       .getByRole('alert')
       .filter({ hasText: /at least|Import rejected|Export JSON|incompatible/ }),
   ).toContainText('at least 1');
-  await page.getByLabel('Replicas', { exact: true }).fill('3');
+  await page
+    .getByRole('spinbutton', { name: 'Replicas', exact: true })
+    .fill('3');
   await page.getByRole('button', { name: 'Apply changes' }).click();
   await expect(
     page.locator('.node-footer').filter({ hasText: '3 replicas' }),
@@ -86,7 +111,7 @@ test('keyboard quick-add, duplicate, delete and undo', async ({ page }) => {
   await page
     .getByRole('textbox', { name: 'Search components', exact: true })
     .fill('queue');
-  await page.getByRole('button', { name: /^Queue Asynchronous/ }).click();
+  await page.getByRole('button', { name: 'Add Queue', exact: true }).click();
   await expect(page.locator('.react-flow__node')).toHaveCount(5);
   await page.getByRole('button', { name: 'Close inspector' }).click();
   await page.keyboard.press('Control+d');
@@ -110,7 +135,7 @@ test('JSON export reimports and invalid imports preserve draft', async ({
   const file = await download;
   const path = await file.path();
   const parsed = JSON.parse(await readFile(path!, 'utf8'));
-  expect(parsed.schemaVersion).toBe('1.0');
+  expect(parsed.schemaVersion).toBe('1.1');
   expect(parsed.nodes).toHaveLength(4);
   const input = page.getByLabel('Import architecture JSON', { exact: true });
   await input.setInputFiles({
@@ -154,10 +179,13 @@ test('corrupt saved draft is preserved until explicit replacement', async ({
 });
 test('storage write failures remain visible', async ({ page }) => {
   await page.addInitScript(() => {
-    Storage.prototype.setItem = () => {
+    IDBObjectStore.prototype.put = () => {
       throw new DOMException('Quota exceeded', 'QuotaExceededError');
     };
   });
+  await page.addInitScript(() =>
+    localStorage.setItem('swiftbuild.theme', 'light'),
+  );
   await page.goto('/');
   await expect(page.getByRole('status')).toHaveText('Save failed');
   await expect(
@@ -175,7 +203,7 @@ test('boundaries group nodes and deletion is reversible', async ({ page }) => {
   await page
     .getByRole('textbox', { name: 'Search components', exact: true })
     .fill('boundary');
-  await page.getByRole('button', { name: /^Boundary A deployment/ }).click();
+  await page.getByRole('button', { name: 'Add Boundary', exact: true }).click();
   await selectObject(page, 'Storefront API');
   await page
     .getByLabel('Boundary', { exact: true })
@@ -185,7 +213,7 @@ test('boundaries group nodes and deletion is reversible', async ({ page }) => {
       async () =>
         (await stored(page)).nodes.find(
           (n: { id: string }) => n.id === 'service',
-        ).parentId,
+        )?.parentId,
     )
     .toBeTruthy();
   await selectObject(page, 'Boundary');
@@ -253,7 +281,9 @@ test('100-node import remains interactive and searchable', async ({ page }) => {
   await expect(page.getByLabel('Name', { exact: true })).toHaveValue(
     'Service 99',
   );
-  await page.getByLabel('Replicas', { exact: true }).fill('4');
+  await page
+    .getByRole('spinbutton', { name: 'Replicas', exact: true })
+    .fill('4');
   await page.getByRole('button', { name: 'Apply changes' }).click();
   await expect
     .poll(
@@ -277,14 +307,14 @@ test('drag changes layout only and commits a single undo step', async ({
   await page.mouse.move(box!.x + 130, box!.y + 90, { steps: 8 });
   await page.mouse.up();
   await expect
-    .poll(async () => (await stored(page)).views[0].layout.client.x)
-    .not.toBe(before.views[0].layout.client.x);
+    .poll(async () => (await stored(page)).views[0]!.layout.client!.x)
+    .not.toBe(before.views[0]!.layout.client!.x);
   const after = await stored(page);
   expect(after.nodes).toEqual(before.nodes);
   await page.getByRole('button', { name: 'Undo', exact: true }).click();
   await expect
-    .poll(async () => (await stored(page)).views[0].layout.client)
-    .toEqual(before.views[0].layout.client);
+    .poll(async () => (await stored(page)).views[0]!.layout.client!)
+    .toEqual(before.views[0]!.layout.client!);
 });
 test('compatible connection creation and incompatible port feedback', async ({
   page,
@@ -313,7 +343,7 @@ test('compatible connection creation and incompatible port feedback', async ({
     'Primary database: Connections',
   );
   await expect.poll(async () => (await stored(page)).edges.length).toBe(1);
-  expect((await stored(page)).edges[0].relationship).toBe(
+  expect((await stored(page)).edges[0]!.relationship).toBe(
     'database-connection',
   );
   await connect('Web application: Requests', 'Primary database: Connections');
@@ -381,8 +411,8 @@ test('canvas locking prevents layout movement and logs show actual saved work', 
   await page.mouse.down();
   await page.mouse.move(box!.x + 130, box!.y + 90, { steps: 8 });
   await page.mouse.up();
-  expect((await stored(page)).views[0].layout.client).toEqual(
-    original.views[0].layout.client,
+  expect((await stored(page)).views[0]!.layout.client!).toEqual(
+    original.views[0]!.layout.client!,
   );
   await page
     .getByRole('button', { name: 'Unlock canvas', exact: true })

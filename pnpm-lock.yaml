@@ -26,6 +26,9 @@ importers:
       eslint-plugin-react-hooks:
         specifier: ^7.0.1
         version: 7.1.1(eslint@10.12.0)
+      fake-indexeddb:
+        specifier: ^6.2.5
+        version: 6.2.5
       globals:
         specifier: ^16.5.0
         version: 16.5.0
@@ -103,6 +106,12 @@ importers:
       '@swiftbuild/architecture-schema':
         specifier: workspace:*
         version: link:../architecture-schema
+      '@swiftbuild/capacity-engine':
+        specifier: workspace:*
+        version: link:../capacity-engine
+      '@swiftbuild/component-registry':
+        specifier: workspace:*
+        version: link:../component-registry
       '@swiftbuild/components-core':
         specifier: workspace:*
         version: link:../components-core
@@ -112,6 +121,9 @@ importers:
       '@swiftbuild/graph-engine':
         specifier: workspace:*
         version: link:../graph-engine
+      '@swiftbuild/rule-engine':
+        specifier: workspace:*
+        version: link:../rule-engine
       '@swiftbuild/ui':
         specifier: workspace:*
         version: link:../ui
@@ -127,6 +139,9 @@ importers:
       react-dom:
         specifier: 19.3.0
         version: 19.3.0(react@19.3.0)
+      zod:
+        specifier: ^4.6.5
+        version: 4.6.5
       zustand:
         specifier: ^5.0.8
         version: 5.0.15(@types/react@19.3.0)(react@19.3.0)(use-sync-external-store@1.7.0(react@19.3.0))
@@ -137,6 +152,41 @@ importers:
       '@types/react-dom':
         specifier: ^19.2.2
         version: 19.3.0(@types/react@19.3.0)
+
+  packages/capacity-engine:
+    dependencies:
+      '@swiftbuild/architecture-model':
+        specifier: workspace:*
+        version: link:../architecture-model
+      '@swiftbuild/architecture-schema':
+        specifier: workspace:*
+        version: link:../architecture-schema
+      '@swiftbuild/graph-engine':
+        specifier: workspace:*
+        version: link:../graph-engine
+    devDependencies:
+      '@swiftbuild/components-core':
+        specifier: workspace:*
+        version: link:../components-core
+
+  packages/component-registry:
+    dependencies:
+      '@swiftbuild/architecture-schema':
+        specifier: workspace:*
+        version: link:../architecture-schema
+      '@swiftbuild/components-core':
+        specifier: workspace:*
+        version: link:../components-core
+      zod:
+        specifier: ^4.1.12
+        version: 4.6.5
+    devDependencies:
+      '@swiftbuild/architecture-model':
+        specifier: workspace:*
+        version: link:../architecture-model
+      '@swiftbuild/graph-engine':
+        specifier: workspace:*
+        version: link:../graph-engine
 
   packages/components-core:
     dependencies:
@@ -154,6 +204,25 @@ importers:
       '@swiftbuild/architecture-schema':
         specifier: workspace:*
         version: link:../architecture-schema
+    devDependencies:
+      '@swiftbuild/components-core':
+        specifier: workspace:*
+        version: link:../components-core
+
+  packages/rule-engine:
+    dependencies:
+      '@swiftbuild/architecture-model':
+        specifier: workspace:*
+        version: link:../architecture-model
+      '@swiftbuild/architecture-schema':
+        specifier: workspace:*
+        version: link:../architecture-schema
+      '@swiftbuild/capacity-engine':
+        specifier: workspace:*
+        version: link:../capacity-engine
+      '@swiftbuild/graph-engine':
+        specifier: workspace:*
+        version: link:../graph-engine
     devDependencies:
       '@swiftbuild/components-core':
         specifier: workspace:*
@@ -179,6 +248,9 @@ importers:
       react-dom:
         specifier: 19.3.0
         version: 19.3.0(react@19.3.0)
+      simple-icons:
+        specifier: 16.34.0
+        version: 16.34.0
     devDependencies:
       '@storybook/react-vite':
         specifier: ^10.0.0
@@ -2132,6 +2204,10 @@ packages:
   extendable-error@0.1.7:
     resolution: {integrity: sha512-UOiS2in6/Q0FK0R0q6UY9vYpQ21mr/Qn1KOnte7vsACuNJf514WvCCUHSRCPcgjPT2bAhNIJdlE6bVap1GKmeg==}
 
+  fake-indexeddb@6.2.5:
+    resolution: {integrity: sha512-CGnyrvbhPlWYMngksqrSSUT1BAVP49dZocrHuK0SvtR0D5TMs5wP0o3j7jexDJW01KSadjBp1M/71o/KR3nD1w==}
+    engines: {node: '>=18'}
+
   fast-deep-equal@3.1.3:
     resolution: {integrity: sha512-f3qQ9oQy9j2AhBe/H9VC91wLmKBCCU/gDOnKNAYG5hswO7BLKj09Hc5HYNz9cGI++xlpDCIgDaitVs03ATR84Q==}
 
@@ -2718,6 +2794,10 @@ packages:
   signal-exit@4.1.0:
     resolution: {integrity: sha512-bzyZ1e88w9O1iNJbKnOlvYTrWPDl46O1bG0D3XInv+9tkPrxrN8jUUTiFlDkkmKWgn1M6CfIA13SuGqOa9Korw==}
     engines: {node: '>=14'}
+
+  simple-icons@16.34.0:
+    resolution: {integrity: sha512-UTxKn0PVspk84B2hHF3Dqiqht1yDjJmDc/t4cO7PyCQxCMk6OjEu95pnpGjhLaGeQ4qBrGASbefTIe/+czrX7g==}
+    engines: {node: '>=0.12.18'}
 
   slash@3.0.0:
     resolution: {integrity: sha512-g9Q1haeby36OSStwb4ntCGGGaKsaVSjQ68fBxoQcutl5fS1vuY18H3wSt3jFyFtrkx+Kz0V1G85A4MyAdDMi2Q==}
@@ -4918,6 +4998,8 @@ snapshots:
 
   extendable-error@0.1.7: {}
 
+  fake-indexeddb@6.2.5: {}
+
   fast-deep-equal@3.1.3: {}
 
   fast-glob@3.3.3:
@@ -5530,6 +5612,8 @@ snapshots:
   siginfo@2.0.0: {}
 
   signal-exit@4.1.0: {}
+
+  simple-icons@16.34.0: {}
 
   slash@3.0.0: {}
 

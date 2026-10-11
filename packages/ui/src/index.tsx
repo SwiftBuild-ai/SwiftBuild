@@ -1,8 +1,81 @@
 'use client';
-import type { ButtonHTMLAttributes, ReactNode } from 'react';
+export { TechnologyIcon } from './technology-icon';
+import {
+  useId,
+  useRef,
+  type ButtonHTMLAttributes,
+  type ReactNode,
+} from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
+export function Tabs({
+  value,
+  onChange,
+  items,
+  label,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  items: { id: string; label: string; content: ReactNode }[];
+  label: string;
+}) {
+  const prefix = useId();
+  return (
+    <div className="sb-tabs">
+      <div role="tablist" aria-label={label}>
+        {items.map((item, index) => (
+          <button
+            key={item.id}
+            id={`${prefix}-${item.id}-tab`}
+            role="tab"
+            aria-selected={value === item.id}
+            aria-controls={`${prefix}-${item.id}-panel`}
+            tabIndex={value === item.id ? 0 : -1}
+            onClick={() => onChange(item.id)}
+            onKeyDown={(event) => {
+              let next: number;
+              if (event.key === 'ArrowRight') next = (index + 1) % items.length;
+              else if (event.key === 'ArrowLeft')
+                next = (index + items.length - 1) % items.length;
+              else if (event.key === 'Home') next = 0;
+              else if (event.key === 'End') next = items.length - 1;
+              else return;
+              event.preventDefault();
+              onChange(items[next]!.id);
+              const buttons =
+                event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>(
+                  '[role="tab"]',
+                );
+              buttons?.[next]?.focus();
+            }}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+      {items.map((item) => (
+        <div
+          key={item.id}
+          id={`${prefix}-${item.id}-panel`}
+          role="tabpanel"
+          aria-labelledby={`${prefix}-${item.id}-tab`}
+          hidden={value !== item.id}
+          tabIndex={0}
+        >
+          {item.content}
+        </div>
+      ))}
+    </div>
+  );
+}
+export function StatusBadge({ status }: { status: string }) {
+  return (
+    <span className={`sb-status status-${status}`}>
+      {status.replaceAll('-', ' ')}
+    </span>
+  );
+}
 export function Button({
   children,
   className = '',
@@ -53,11 +126,24 @@ export function Modal({
   description: string;
   children: ReactNode;
 }) {
+  const opener = useRef<HTMLElement | null>(null);
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="modal-overlay" />
-        <Dialog.Content className="modal-content">
+        <Dialog.Content
+          className="modal-content"
+          onOpenAutoFocus={() => {
+            opener.current =
+              document.activeElement instanceof HTMLElement
+                ? document.activeElement
+                : null;
+          }}
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            if (opener.current?.isConnected) opener.current.focus();
+          }}
+        >
           <div className="modal-heading">
             <div>
               <Dialog.Title>{title}</Dialog.Title>

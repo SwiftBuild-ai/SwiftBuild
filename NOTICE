@@ -3,3 +3,7 @@ SwiftBuild
 SwiftBuild is licensed under Apache-2.0. Third-party dependencies retain their own licenses.
 
 The interface uses Inter and IBM Plex Mono under SIL Open Font License 1.1 and Lucide icons under ISC/MIT terms. Their original notices are available in apps/web/public/licenses and are included in the web distribution.
+
+The capacity engine implements public-domain xoshiro128** and SplitMix64 algorithms by David Blackman and Sebastiano Vigna. Original sources and permission statements: https://prng.di.unimi.it/xoshiro128starstar.c and https://prng.di.unimi.it/splitmix64.c.
+
+Technology SVG paths from Simple Icons (CC0-1.0): https://simpleicons.org/ and https://github.com/simple-icons/simple-icons. License text is bundled at apps/web/public/licenses/simple-icons.txt. Product marks remain the property of their respective owners. Other infrastructure pictograms are original SwiftBuild vectors.

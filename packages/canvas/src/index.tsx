@@ -28,9 +28,26 @@ import {
   FileJson,
   Workflow,
   Check,
+  PanelsTopLeft,
 } from 'lucide-react';
-import { Button, IconButton, Modal, ActionMenu } from '@swiftbuild/ui';
-import { coreComponents, sampleDocument } from '@swiftbuild/components-core';
+import {
+  Button,
+  IconButton,
+  Modal,
+  ActionMenu,
+  TechnologyIcon,
+} from '@swiftbuild/ui';
+import {
+  defaultComponents,
+  searchComponents,
+  loadPack,
+  infrastructureSampleDocument,
+} from '@swiftbuild/component-registry';
+import {
+  coreComponents,
+  sampleDocument,
+  engineeringSampleDocument,
+} from '@swiftbuild/components-core';
 import { graphIssues } from '@swiftbuild/graph-engine';
 import {
   serializeDocument,
@@ -38,22 +55,33 @@ import {
   type ComponentDefinition,
 } from '@swiftbuild/architecture-schema';
 import { createEditorStore } from './store';
+import { ConnectionDialog } from './connection-dialog';
+import {
+  EngineeringWorkbench,
+  engineeringSections,
+  type EngineeringSection,
+} from './engineering-workbench';
+import {
+  IndexedWorkspace,
+  loadWorkspace,
+  readLegacyDraft,
+  workspaceFor,
+  serializeArchive,
+  importArchive,
+  MAX_ARCHIVE_BYTES,
+  type ProjectArchive,
+  type WorkspaceAdapter,
+} from './workspace';
+import { inputFingerprint } from '@swiftbuild/architecture-model';
+import { evaluateArchitecture } from '@swiftbuild/rule-engine';
+import {
+  ENGINE_VERSION,
+  type CapacityReport,
+} from '@swiftbuild/capacity-engine';
 import { CatalogSidebar, ObjectSidebar } from './catalog';
-import {
-  StoreContext,
-  useEditor,
-  icons,
-  GraphCanvas,
-  Inspector,
-} from './graph';
-import {
-  browserStorage,
-  loadDraft,
-  saveDraft,
-  importDocument,
-  MAX_IMPORT_BYTES,
-  DRAFT_KEY,
-} from './storage';
+import { recordCatalogUse } from './catalog-preferences';
+import { StoreContext, useEditor, GraphCanvas, Inspector } from './graph';
+import { importDocument, MAX_IMPORT_BYTES, DRAFT_KEY } from './storage';
 function Editor() {
   const document = useEditor((s) => s.history.present);
   const selected = useEditor((s) => s.selected);
@@ -78,11 +106,21 @@ function Editor() {
   const [validation, setValidation] = useState(false);
   const [newProject, setNewProject] = useState(false);
   const [engineering, setEngineering] = useState(false);
-  const [theme, setTheme] = useState<'dark' | 'light'>('light');
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const [themeReady, setThemeReady] = useState(false);
+  const [componentDetails, setComponentDetails] =
+    useState<ComponentDefinition | null>(null);
+  const packInput = useRef<HTMLInputElement>(null);
+  const definitions = [
+    ...new Map(
+      [...defaultComponents, ...document.components].map((c) => [c.id, c]),
+    ).values(),
+  ];
   const [query, setQuery] = useState('');
   const [hydrated, setHydrated] = useState(false);
   const [locked, setLocked] = useState(false);
   const [status, setStatus] = useState('Loading draft');
+  const saveGeneration = useRef(0);
   const [pendingImport, setPendingImport] =
     useState<ArchitectureDocument | null>(null);
   const [panel, setPanel] = useState<'components' | 'objects'>('components');
@@ -94,57 +132,125 @@ function Editor() {
   const [customBase, setCustomBase] = useState('core.service');
   const [customError, setCustomError] = useState('');
   const [activity, setActivity] = useState(false);
+  const [section, setSection] = useState<EngineeringSection | null>(null);
+  const [connectionDialog, setConnectionDialog] = useState(false);
+  const [workspace, setWorkspace] = useState<ProjectArchive>(() =>
+    workspaceFor(document),
+  );
+  const [currentReport, setCurrentReport] = useState<CapacityReport | null>(
+    null,
+  );
+  const [overlay, setOverlay] = useState(false);
+  const [pendingArchive, setPendingArchive] = useState<ProjectArchive | null>(
+    null,
+  );
+  const workspaceAdapter = useRef<WorkspaceAdapter | null>(null);
+  const persistenceQueue = useRef<Promise<void>>(Promise.resolve());
+  const archiveInput = useRef<HTMLInputElement>(null);
   const [events, setEvents] = useState<{ time: string; message: string }[]>([]);
   const catalogSearch = useRef<HTMLInputElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   useEffect(() => {
     setSidebar(window.innerWidth > 760);
-    const result = loadDraft(browserStorage());
-    if (result.status === 'loaded') {
-      replace(result.document);
-      setStatus('Saved locally');
-    } else if (result.status === 'error') {
-      setLocked(true);
-      setStatus('Draft recovery needed');
-      notify(`Your stored draft was left untouched. ${result.message}`);
-    } else setStatus('Ready to save');
-    setHydrated(true);
+    let active = true;
+    const hydrate = async () => {
+      try {
+        if (!workspaceAdapter.current)
+          workspaceAdapter.current = new IndexedWorkspace();
+      } catch (error) {
+        setLocked(true);
+        setStatus('Storage unavailable');
+        notify(
+          error instanceof Error ? error.message : 'IndexedDB unavailable.',
+        );
+        setHydrated(true);
+        return;
+      }
+      const result = await loadWorkspace(
+        workspaceAdapter.current,
+        readLegacyDraft,
+      );
+      if (!active) return;
+      if (result.status === 'loaded') {
+        replace(result.archive.document);
+        setWorkspace(result.archive);
+        setCurrentReport(result.archive.runs.at(-1) ?? null);
+        setStatus('Saved locally');
+      } else if (result.status === 'error') {
+        setLocked(true);
+        setStatus('Draft recovery needed');
+        notify(`Your stored draft was left untouched. ${result.message}`);
+      } else setStatus('Ready to save');
+      setHydrated(true);
+    };
+    void hydrate();
+    return () => {
+      active = false;
+    };
   }, [replace, notify]);
   useEffect(() => {
     if (!hydrated || locked) return;
+    const generation = ++saveGeneration.current;
     setStatus('Saving…');
     const timer = setTimeout(() => {
-      try {
-        saveDraft(browserStorage(), document);
-        setStatus('Saved locally');
-        setEvents((previous) => [
-          ...previous.slice(-19),
-          {
-            time: new Date().toLocaleTimeString([], {
-              hour: '2-digit',
-              minute: '2-digit',
-              second: '2-digit',
-            }),
-            message: `Saved draft · ${document.nodes.length} components · ${document.edges.length} connections`,
-          },
-        ]);
-      } catch (error) {
-        setStatus('Save failed');
-        notify(
-          `Autosave failed. Export JSON to preserve your work. ${error instanceof Error ? error.message : ''}`,
-        );
-      }
+      const archive = {
+        ...workspace,
+        document,
+        exportedAt: new Date().toISOString(),
+      };
+      persistenceQueue.current = persistenceQueue.current
+        .catch(() => {})
+        .then(async () => {
+          if (!workspaceAdapter.current)
+            throw new Error('IndexedDB unavailable.');
+          await workspaceAdapter.current.write(archive);
+          if (generation === saveGeneration.current) setStatus('Saved locally');
+          setEvents((previous) => [
+            ...previous.slice(-19),
+            {
+              time: new Date().toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+              }),
+              message: `Saved draft · ${document.nodes.length} components · ${document.edges.length} connections`,
+            },
+          ]);
+        })
+        .catch((error) => {
+          if (generation === saveGeneration.current) {
+            setStatus('Save failed');
+            notify(
+              `Autosave failed. Export JSON to preserve your work. ${error instanceof Error ? error.message : ''}`,
+            );
+          }
+        });
     }, 450);
     return () => clearTimeout(timer);
-  }, [document, hydrated, locked, notify]);
+  }, [document, workspace, hydrated, locked, notify]);
   useEffect(() => {
+    setTheme(
+      window.document.documentElement.dataset.theme === 'light'
+        ? 'light'
+        : 'dark',
+    );
+    setThemeReady(true);
+  }, []);
+  useEffect(() => {
+    if (!themeReady) return;
     window.document.documentElement.dataset.theme = theme;
-  }, [theme]);
+    try {
+      localStorage.setItem('swiftbuild.theme', theme);
+    } catch {
+      /* Theme remains usable in memory. */
+    }
+  }, [theme, themeReady]);
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
       if (target.closest('input,textarea,select,[contenteditable="true"]'))
         return;
+      if (target.closest('[role="dialog"]')) return;
       const mod = e.metaKey || e.ctrlKey;
       if (mod && e.key.toLowerCase() === 'k') {
         e.preventDefault();
@@ -159,6 +265,17 @@ function Editor() {
         setTimeout(() => catalogSearch.current?.focus(), 0);
         return;
       }
+      if (
+        !mod &&
+        e.key.toLowerCase() === 'c' &&
+        !palette &&
+        !browser &&
+        !section
+      ) {
+        e.preventDefault();
+        setConnectionDialog(true);
+        return;
+      }
       if (mod && e.key.toLowerCase() === 'b') {
         e.preventDefault();
         setSidebar((v) => !v);
@@ -166,6 +283,7 @@ function Editor() {
       }
       if (
         browser ||
+        connectionDialog ||
         palette ||
         newProject ||
         pendingImport ||
@@ -217,6 +335,8 @@ function Editor() {
     help,
     templates,
     custom,
+    connectionDialog,
+    section,
   ]);
   const download = (text: string, filename: string) => {
     const url = URL.createObjectURL(
@@ -228,11 +348,23 @@ function Editor() {
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
-  const exportJSON = () =>
-    download(
-      serializeDocument(document),
-      `${document.project.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'architecture'}.swiftbuild.json`,
-    );
+  const exportJSON = () => {
+    try {
+      const raw = serializeDocument(document);
+      if (new TextEncoder().encode(raw).length > MAX_IMPORT_BYTES)
+        throw new Error(
+          'Architecture exceeds the 5 MB native-file limit. Use a project archive to preserve the workspace.',
+        );
+      download(
+        raw,
+        `${document.project.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'architecture'}.swiftbuild.json`,
+      );
+    } catch (error) {
+      notify(
+        error instanceof Error ? error.message : 'Architecture export failed.',
+      );
+    }
+  };
   const importJSON = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
@@ -253,23 +385,95 @@ function Editor() {
       x: (window.innerWidth + (sidebar ? 320 : 42)) / 2,
       y: window.innerHeight / 2,
     });
-    add(definition, {
+    const saved = add(definition, {
       x: center.x - 120 + (document.nodes.length % 4) * 28,
       y: center.y - 70 + (document.nodes.length % 4) * 28,
       ...(definition.category === 'boundary'
         ? { width: 560, height: 360 }
         : {}),
     });
+    if (!saved) return false;
+    recordCatalogUse(definition.id);
     setBrowser(false);
     setInspector(true);
+    return true;
   };
-  const filtered = coreComponents.filter((c) =>
-    `${c.name} ${c.category} ${c.description}`
-      .toLowerCase()
-      .includes(query.toLowerCase()),
-  );
+  const filtered = searchComponents(definitions, query);
   const issues = graphIssues(document);
+  const engineeringValidation = evaluateArchitecture(document, {
+    capacity: currentReport ?? undefined,
+  });
+  const openRecord = (destination: EngineeringSection, id: string) => {
+    setSection(destination);
+    setSidebar(false);
+    setInspector(false);
+    window.setTimeout(() => {
+      const record = window.document.getElementById(id);
+      record?.scrollIntoView({ block: 'center' });
+      record?.focus();
+    }, 100);
+  };
   const commands = [
+    {
+      name: 'Connect architecture objects',
+      hint: 'C',
+      run: () => {
+        setSection(null);
+        setConnectionDialog(true);
+      },
+    },
+    ...definitions.map((definition) => ({
+      name: `Add ${definition.name}`,
+      hint: '',
+      run: () => {
+        setSection(null);
+        addComponent(definition);
+      },
+    })),
+    ...engineeringSections.map((item) => ({
+      name: `Open ${item.label}`,
+      hint: '',
+      run: () => {
+        setSection(item.id);
+        setSidebar(false);
+        setInspector(false);
+      },
+    })),
+    ...document.nodes.map((node) => ({
+      name: `Object: ${node.name}`,
+      hint: '',
+      run: () => {
+        setSection(null);
+        select([node.id]);
+        setInspector(true);
+        void flow.fitView({
+          nodes: [{ id: node.id }],
+          padding: 0.6,
+          maxZoom: 1,
+        });
+      },
+    })),
+    ...[...document.requirements, ...document.nonFunctionalRequirements].map(
+      (r) => ({
+        name: `Requirement: ${r.title}`,
+        hint: '',
+        run: () => {
+          openRecord('requirements', `requirement-${r.id}`);
+        },
+      }),
+    ),
+    ...document.decisions.map((d) => ({
+      name: `Decision: ${d.title}`,
+      hint: '',
+      run: () => {
+        openRecord('decisions', `decision-${d.id}`);
+      },
+    })),
+    ...engineeringValidation.findings.map((finding) => ({
+      name: `Finding: ${finding.title}`,
+      hint: finding.severity,
+      run: () => openRecord('validation', `finding-${finding.id}`),
+    })),
     {
       name: 'Add component',
       hint: 'A',
@@ -295,8 +499,21 @@ function Editor() {
       hint: '',
       run: () => setTheme((t) => (t === 'dark' ? 'light' : 'dark')),
     },
-    { name: 'Check model integrity', hint: '', run: () => setValidation(true) },
+    {
+      name: 'Validate architecture',
+      hint: '',
+      run: () => {
+        setSection('validation');
+        setSidebar(false);
+      },
+    },
   ];
+  const reportStale =
+    !!currentReport &&
+    (currentReport.fingerprint !== inputFingerprint(document) ||
+      currentReport.origin === 'imported' ||
+      currentReport.engineVersion !== ENGINE_VERSION ||
+      currentReport.modelVersion !== '1.0');
   return (
     <div className="workbench">
       <a
@@ -388,8 +605,31 @@ function Editor() {
       <div className="editor-body">
         <nav className="tool-rail" aria-label="Editor tools">
           <IconButton
+            label="Architecture canvas"
+            aria-pressed={section === null}
+            onClick={() => setSection(null)}
+          >
+            <PanelsTopLeft size={19} />
+          </IconButton>
+          {engineeringSections.map((item) => (
+            <IconButton
+              key={item.id}
+              label={item.label}
+              aria-pressed={section === item.id}
+              onClick={() => {
+                setSection(item.id);
+                setSidebar(false);
+                setInspector(false);
+              }}
+            >
+              <item.icon size={18} />
+            </IconButton>
+          ))}
+          <span className="rail-divider" />
+          <IconButton
             label="Search components"
             onClick={() => {
+              setSection(null);
               setSidebar(true);
               setPanel('components');
               setTimeout(() => catalogSearch.current?.focus(), 0);
@@ -405,6 +645,7 @@ function Editor() {
             }
             aria-pressed={sidebar && panel === 'components'}
             onClick={() => {
+              setSection(null);
               if (sidebar && panel === 'components') setSidebar(false);
               else {
                 setSidebar(true);
@@ -418,6 +659,7 @@ function Editor() {
             label="Architecture objects"
             aria-pressed={sidebar && panel === 'objects'}
             onClick={() => {
+              setSection(null);
               setSidebar(true);
               setPanel('objects');
             }}
@@ -449,17 +691,13 @@ function Editor() {
           </IconButton>
         </nav>
         {sidebar &&
+          section === null &&
           (panel === 'components' ? (
             <CatalogSidebar
-              definitions={[
-                ...new Map(
-                  [...coreComponents, ...document.components].map((c) => [
-                    c.id,
-                    c,
-                  ]),
-                ).values(),
-              ]}
+              definitions={definitions}
               onAdd={addComponent}
+              onDetails={setComponentDetails}
+              onPack={() => packInput.current?.click()}
               onBrowse={() => {
                 setQuery('');
                 setBrowser(true);
@@ -480,15 +718,33 @@ function Editor() {
             <ObjectSidebar onInspect={() => setInspector(true)} />
           ))}
         <main className="canvas-main" aria-label="System architecture">
-          <GraphCanvas
-            engineering={engineering}
-            onInspector={() => setInspector(true)}
-            onHelp={() => setHelp(true)}
-          />
-          <div className="editor-floating-actions">
+          <div
+            style={{
+              height: '100%',
+              visibility: section === null ? 'visible' : 'hidden',
+            }}
+            aria-hidden={section !== null}
+            inert={section !== null}
+          >
+            <GraphCanvas
+              engineering={engineering}
+              report={
+                overlay && !reportStale
+                  ? (currentReport ?? undefined)
+                  : undefined
+              }
+              onInspector={() => setInspector(true)}
+              onHelp={() => setHelp(true)}
+            />
+          </div>
+          <div className="editor-floating-actions" hidden={section !== null}>
             <Button
               className="validate-action"
-              onClick={() => setValidation(true)}
+              onClick={() => {
+                setSection('validation');
+                setSidebar(false);
+                setInspector(false);
+              }}
             >
               <ShieldCheck size={17} />
               Validate
@@ -506,6 +762,33 @@ function Editor() {
                 </Button>
               }
               items={[
+                {
+                  label: 'Export project archive',
+                  icon: <Download size={16} />,
+                  onSelect: () => {
+                    try {
+                      download(
+                        serializeArchive({
+                          ...workspace,
+                          document,
+                          exportedAt: new Date().toISOString(),
+                        }),
+                        'project.swiftbuild-project.json',
+                      );
+                    } catch (error) {
+                      notify(
+                        error instanceof Error
+                          ? error.message
+                          : 'Archive export failed.',
+                      );
+                    }
+                  },
+                },
+                {
+                  label: 'Import project archive',
+                  icon: <Upload size={16} />,
+                  onSelect: () => archiveInput.current?.click(),
+                },
                 {
                   label: 'Export JSON',
                   icon: <Download size={16} />,
@@ -538,7 +821,67 @@ function Editor() {
               ]}
             />
           </div>
-          <div className="editor-bottom-left">
+          {section === null &&
+            currentReport &&
+            document.scenarios.some(
+              (s) => s.id === currentReport.scenarioId,
+            ) && (
+              <div className="canvas-result-toggle">
+                <Button
+                  aria-pressed={overlay}
+                  onClick={() => setOverlay((value) => !value)}
+                >
+                  {overlay ? 'Hide' : 'Show'} capacity overlay
+                </Button>
+                <span>
+                  {reportStale
+                    ? 'Results stale · rerun needed'
+                    : `${currentReport.kind} · ${currentReport.status}`}
+                </span>
+              </div>
+            )}
+          {section === null && document.nodes.length === 0 && (
+            <div className="empty-canvas">
+              <Network size={26} />
+              <h2>Start a system architecture</h2>
+              <p>
+                Add components and semantic connections, then explore the
+                requirements and capacity behind your design.
+              </p>
+              <div>
+                <Button
+                  variant="primary"
+                  onClick={() => {
+                    setQuery('');
+                    setBrowser(true);
+                  }}
+                >
+                  Choose a component
+                </Button>
+                <Button onClick={() => setTemplates(true)}>
+                  Explore an example
+                </Button>
+              </div>
+              <span className="field-hint">
+                A · add component / C · connect objects / Ctrl K · commands
+              </span>
+            </div>
+          )}
+          {section === null && (
+            <Button
+              className="findings-strip"
+              onClick={() => {
+                setSection('validation');
+                setSidebar(false);
+                setInspector(false);
+              }}
+            >
+              <ShieldCheck size={15} />
+              {engineeringValidation.findings.length} findings{' '}
+              <span className="save-state">{status}</span>
+            </Button>
+          )}
+          <div className="editor-bottom-left" hidden={section !== null}>
             <Button
               className="logs-trigger"
               aria-label="Logs"
@@ -566,7 +909,7 @@ function Editor() {
               </div>
             )}
           </div>
-          {activity && (
+          {activity && section === null && (
             <section className="activity-panel" aria-label="Activity log">
               <div className="panel-heading">
                 <h2>Activity</h2>
@@ -601,7 +944,7 @@ function Editor() {
               </div>
             </section>
           )}
-          {selected.length > 0 && (
+          {selected.length > 0 && section === null && (
             <div className="selection-actions">
               <span>{selected.length} selected</span>
               <IconButton label="Duplicate selection" onClick={duplicate}>
@@ -618,9 +961,42 @@ function Editor() {
               </IconButton>
             </div>
           )}
+          {section !== null && (
+            <EngineeringWorkbench
+              section={section}
+              onClose={() => setSection(null)}
+              workspace={workspace}
+              setWorkspace={setWorkspace}
+              onReport={setCurrentReport}
+              saveStatus={status}
+              onFocus={(ids) => {
+                setSection(null);
+                select(ids);
+                setInspector(true);
+                void flow.fitView({
+                  nodes: ids.map((id) => ({ id })),
+                  padding: 0.6,
+                  maxZoom: 1,
+                });
+              }}
+            />
+          )}
         </main>
-        {inspector && (
+        {inspector && section === null && (
           <Inspector
+            report={!reportStale ? (currentReport ?? undefined) : undefined}
+            onOpenRecord={(kind, id) => {
+              setSection(kind);
+              setSidebar(false);
+              setInspector(false);
+              setTimeout(() => {
+                const target = window.document.getElementById(
+                  `${kind === 'requirements' ? 'requirement' : 'decision'}-${id}`,
+                );
+                target?.scrollIntoView({ block: 'center' });
+                target?.focus();
+              }, 0);
+            }}
             onClose={() => setInspector(false)}
             engineering={engineering}
           />
@@ -641,9 +1017,14 @@ function Editor() {
         <div className="recovery-bar" role="alert">
           <strong>Stored draft needs recovery.</strong>
           <Button
-            onClick={() => {
+            onClick={async () => {
               try {
-                const raw = localStorage.getItem(DRAFT_KEY);
+                const current = await workspaceAdapter.current
+                  ?.read()
+                  .catch(() => null);
+                const raw = current
+                  ? JSON.stringify(current, null, 2)
+                  : localStorage.getItem(DRAFT_KEY);
                 if (raw) download(raw, 'swiftbuild-recovery.json');
               } catch {
                 notify('Browser storage is unavailable.');
@@ -683,6 +1064,71 @@ function Editor() {
         ref={fileInput}
         onChange={importJSON}
       />
+      <ConnectionDialog
+        open={connectionDialog}
+        onOpenChange={setConnectionDialog}
+      />
+      <input
+        type="file"
+        accept="application/json,.json"
+        aria-label="Import project archive"
+        className="file-input"
+        ref={archiveInput}
+        onChange={async (event) => {
+          const file = event.target.files?.[0];
+          event.target.value = '';
+          if (!file) return;
+          try {
+            if (file.size > MAX_ARCHIVE_BYTES)
+              throw new Error('Project archive exceeds 50 MB.');
+            setPendingArchive(importArchive(await file.text(), file.size));
+          } catch (error) {
+            notify(
+              `Archive rejected. ${error instanceof Error ? error.message : 'Invalid project.'}`,
+            );
+          }
+        }}
+      />
+      <Modal
+        open={pendingArchive !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingArchive(null);
+        }}
+        title="Import project archive"
+        description="Replace the current architecture, checkpoints and engineering history after validating the entire archive."
+      >
+        <p>
+          {pendingArchive?.document.project.name} ·{' '}
+          {pendingArchive?.checkpoints.length} checkpoints ·{' '}
+          {pendingArchive?.runs.length} runs
+        </p>
+        <Button
+          variant="primary"
+          onClick={async () => {
+            if (!pendingArchive) return;
+            try {
+              await persistenceQueue.current.catch(() => {});
+              if (!workspaceAdapter.current)
+                throw new Error(
+                  'Storage unavailable. The current workspace was preserved.',
+                );
+              await workspaceAdapter.current.write(pendingArchive);
+              replace(pendingArchive.document);
+              setWorkspace(pendingArchive);
+              setCurrentReport(pendingArchive.runs.at(-1) ?? null);
+              setPendingArchive(null);
+              setLocked(false);
+              setSection(null);
+            } catch (error) {
+              notify(
+                `Archive replacement failed. ${error instanceof Error ? error.message : ''}`,
+              );
+            }
+          }}
+        >
+          Replace workspace
+        </Button>
+      </Modal>
       <Modal
         open={settings}
         onOpenChange={setSettings}
@@ -789,6 +1235,7 @@ function Editor() {
             variant="primary"
             onClick={() => {
               replace(sampleDocument());
+              setSection(null);
               setLocked(false);
               setTemplates(false);
               setInspector(false);
@@ -797,6 +1244,38 @@ function Editor() {
           >
             Use template
           </Button>
+          <Button
+            onClick={() => {
+              replace(engineeringSampleDocument());
+              setLocked(false);
+              setTemplates(false);
+              setInspector(false);
+              setSection('capacity');
+              setSidebar(false);
+              setTimeout(() => flow.fitView({ padding: 0.2 }), 100);
+            }}
+          >
+            Use engineering example
+          </Button>
+          <Button
+            onClick={() => {
+              replace(infrastructureSampleDocument());
+              setLocked(false);
+              setTemplates(false);
+              setSidebar(true);
+              setSection(null);
+              setPanel('components');
+              void flow.fitView({ padding: 0.2 });
+            }}
+          >
+            Use infrastructure example
+          </Button>
+
+          <p className="field-hint">
+            Includes a workload scenario, flow policies, linked requirements and
+            illustrative capacity profiles. Example values are not measured
+            performance.
+          </p>
         </div>
       </Modal>
       <Modal
@@ -868,6 +1347,113 @@ function Editor() {
           </div>
         </form>
       </Modal>
+      <input
+        type="file"
+        accept="application/json,.json"
+        className="file-input"
+        aria-label="Import component pack"
+        ref={packInput}
+        onChange={async (e) => {
+          const file = e.target.files?.[0];
+          e.target.value = '';
+          if (!file) return;
+          try {
+            if (file.size > 5 * 1024 * 1024)
+              throw new Error('Component packs must be no larger than 5 MB.');
+            const pack = loadPack(JSON.parse(await file.text()));
+            for (const c of pack.components) {
+              const existing = definitions.find((d) => d.id === c.id);
+              if (existing && JSON.stringify(existing) !== JSON.stringify(c))
+                throw new Error(
+                  `${c.id} is already installed. A definition upgrade must be explicit.`,
+                );
+            }
+            apply((d) => {
+              for (const c of pack.components)
+                if (!d.components.some((x) => x.id === c.id))
+                  d.components.push(c);
+              d.metadata.componentPacks = [
+                ...(Array.isArray(d.metadata.componentPacks)
+                  ? d.metadata.componentPacks
+                  : []),
+                {
+                  id: pack.id,
+                  name: pack.name,
+                  version: pack.version,
+                  license: pack.license,
+                },
+              ];
+            });
+            notify(
+              `Installed ${pack.name}: ${pack.components.length} declarative components.`,
+            );
+          } catch (error) {
+            notify(
+              `Pack rejected. ${error instanceof Error ? error.message : 'Invalid pack.'}`,
+            );
+          }
+        }}
+      />
+      <Modal
+        open={componentDetails !== null}
+        onOpenChange={(open) => {
+          if (!open) setComponentDetails(null);
+        }}
+        title={componentDetails?.name ?? 'Component details'}
+        description="Inspect the definition before adding it to your architecture."
+      >
+        {componentDetails && (
+          <div className="component-details">
+            <TechnologyIcon
+              icon={componentDetails.icon}
+              size={40}
+              label={`${componentDetails.name} icon`}
+            />
+            <p>{componentDetails.description}</p>
+            <p className="field-hint">
+              {componentDetails.id} · version {componentDetails.version} ·{' '}
+              {componentDetails.catalog?.subcategory ?? 'Generic primitive'}
+            </p>
+            <h3>Configuration</h3>
+            <dl>
+              {componentDetails.configurationSchema.map((f) => (
+                <div key={f.key}>
+                  <dt>{f.label}</dt>
+                  <dd>
+                    {String(f.default)} {f.unit}{' '}
+                    {f.description && <small>{f.description}</small>}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+            <h3>Connections</h3>
+            <p>
+              {componentDetails.ports
+                .map(
+                  (p) =>
+                    `${p.label} (${p.direction}): ${p.relationships.join(', ')}`,
+                )
+                .join(' · ') || 'Containment only; no processing ports.'}
+            </p>
+            <h3>Capacity coverage</h3>
+            <p>
+              {componentDetails.catalog?.capacityModel ?? 'Primitive behavior'}{' '}
+              · explicit performance profiles and flow policies required.
+              Architectural declarations do not establish measured throughput.
+            </p>
+            <p>{componentDetails.documentation}</p>
+            <Button
+              variant="primary"
+              onClick={() => {
+                addComponent(componentDetails);
+                setComponentDetails(null);
+              }}
+            >
+              Add {componentDetails.name}
+            </Button>
+          </div>
+        )}
+      </Modal>
       <Modal
         open={browser}
         onOpenChange={setBrowser}
@@ -887,15 +1473,19 @@ function Editor() {
         </div>
         <div className="component-browser">
           {filtered.map((c) => {
-            const Icon = icons[c.category];
             return (
               <button
                 key={c.id}
                 className="component-option"
+                aria-label={`Add ${c.name}`}
                 onClick={() => addComponent(c)}
               >
                 <div className={`category-icon ${c.category}`}>
-                  <Icon size={22} />
+                  <TechnologyIcon
+                    icon={c.icon}
+                    size={22}
+                    label={`${c.name} icon`}
+                  />
                 </div>
                 <div>
                   <strong>{c.name}</strong>
@@ -910,7 +1500,7 @@ function Editor() {
           )}
         </div>
         <div className="dialog-footer">
-          <span>6 generic primitives</span>
+          <span>{definitions.length} validated components</span>
           <span>
             Declarative · versioned · extensible
             <ArrowUpRight size={12} />

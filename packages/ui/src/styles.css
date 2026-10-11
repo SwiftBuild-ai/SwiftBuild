@@ -162,3 +162,63 @@ kbd {
 .action-menu-item svg {
   color: var(--muted);
 }
+[hidden] {
+  display: none !important;
+}
+.sb-tabs > [role='tablist'] {
+  display: flex;
+  gap: 16px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 18px;
+}
+.sb-tabs [role='tab'] {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  padding: 10px 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+}
+.sb-tabs [role='tab'][aria-selected='true'] {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+.sb-status {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  border-radius: 4px;
+  padding: 3px 7px;
+  font: 10px var(--font-mono);
+  white-space: nowrap;
+}
+.status-known,
+.status-complete,
+.status-passed,
+.status-met,
+.status-accepted {
+  color: var(--success);
+  border-color: color-mix(in srgb, var(--success) 35%, var(--border));
+}
+.status-warning,
+.status-stale,
+.status-partial,
+.status-bottleneck,
+.status-insufficient-information {
+  color: var(--warning);
+}
+.status-error,
+.status-failed,
+.status-violated,
+.status-unstable {
+  color: var(--error);
+}
+textarea,
+summary {
+  font: inherit;
+  outline-offset: 4px;
+}
+textarea:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--focus);
+}

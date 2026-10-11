@@ -18,7 +18,8 @@
     "@radix-ui/react-tooltip": "^1.2.8",
     "@swiftbuild/design-tokens": "workspace:*",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "simple-icons": "16.34.0"
   },
   "devDependencies": {
     "@storybook/react-vite": "^10.0.0",

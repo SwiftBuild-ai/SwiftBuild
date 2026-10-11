@@ -1,0 +1,52 @@
+:root {
+  --icon-postgresql: #4169e1;
+  --icon-mysql: #4479a1;
+  --icon-mariadb: #003545;
+  --icon-mongodb: #47a248;
+  --icon-redis: #ff4438;
+  --icon-kafka: #231f20;
+  --icon-rabbitmq: #ff6600;
+  --icon-nginx: #009639;
+  --icon-cloudflare: #f38020;
+  --icon-cockroachdb: #6933ff;
+  --icon-sqlite: #003b57;
+  --icon-pulsar: #188fff;
+  --icon-nats: #27aae1;
+  --icon-gcs: #aecbfa;
+  --icon-elasticsearch: #005571;
+  --icon-opensearch: #005eb8;
+  --icon-clickhouse: #ffcc01;
+  --icon-snowflake: #29b5e8;
+  --icon-kubernetes: #326ce5;
+  --icon-docker: #2496ed;
+  --icon-prometheus: #e6522c;
+  --icon-grafana: #f46800;
+  --icon-opentelemetry: #000000;
+}
+[data-theme='dark'] {
+  --icon-kafka: #fafafa;
+  --icon-cockroachdb: #a5d6a7;
+  --icon-mysql: #72b8d4;
+  --icon-postgresql: #7ba7cd;
+  --icon-sqlite: #70bddb;
+  --icon-prometheus: #f19172;
+  --icon-nats: #69caaa;
+  --icon-rabbitmq: #ff974f;
+  --icon-redis: #ff7575;
+  --icon-elasticsearch: #86b7b6;
+  --icon-opensearch: #70c8ef;
+}
+:root {
+  --icon-lambda: #d88416;
+  --icon-ec2: #c86d1f;
+  --icon-s3: #438c40;
+  --icon-rds: #5262b9;
+  --icon-dynamodb: #5262b9;
+  --icon-sqs: #b84d8c;
+  --icon-sns: #b84d8c;
+  --icon-azureblob: #1677af;
+  --icon-cassandra: #3898aa;
+  --icon-memcached: #337974;
+  --icon-valkey: #278974;
+  --icon-haproxy: #397392;
+}

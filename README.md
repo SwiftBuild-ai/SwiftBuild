@@ -2,7 +2,9 @@
 
 An open-source Architecture IDE and System Design Workbench. Design systems with components and connections that carry engineering meaning.
 
-![SwiftBuild architecture workbench](docs/assets/workbench.jpg)
+![SwiftBuild neutral black architecture canvas with technology catalog and PostgreSQL configuration](docs/assets/workbench.png)
+
+[View the light theme](docs/assets/workbench-light.png). Both workbench captures use a 1487 by 1058 viewport.
 
 ## Start locally
 
@@ -13,18 +15,27 @@ pnpm install
 pnpm dev
 ```
 
-Open http://localhost:3000. The workbench restores your browser draft or starts with an empty architecture. Search the component catalog to begin, or choose the commerce example from Architecture templates. Configure components, connect semantic ports, and export a portable JSON document.
+Open http://localhost:3000. The workbench restores your browser workspace or starts with an empty architecture. Search the component catalog, choose the commerce template, or use the engineering example to explore scenarios and simulation. Example measurements are explicitly illustrative.
 
-## Bootstrap capabilities
+## Workbench capabilities
 
 - Versioned architecture schema with stable IDs and separate layout data
-- Six generic components and validated configuration
+- Generic clients, services, workers, load balancers, databases, caches, queues and boundaries
+- Direct infrastructure technology selection, contextual configuration and local SVG identity across 35 technologies/provider services
+- Searchable taxonomy, technology/generic filters, favorites, recents, details, drag/keyboard insertion and validated local component packs
 - Canvas navigation, grouping, selection, duplication, deletion, and undo/redo
-- Browser-local draft with validated JSON import/export
+- Transactional browser workspace, validated native JSON and project archives, and recoverable named checkpoints
 - Accessible object list, keyboard shortcuts, and light/dark themes
+- Default neutral black/zinc dark surfaces, retained light theme and preference restoration before hydration
 - Persistent searchable catalog, portable custom components based on validated primitives, canvas locking, and activity logs
+- Linked requirements, decision records, evidence-based assessments and deterministic engineering findings
+- Workload scenarios, growth and bursts, analytical topology propagation and seeded discrete-event simulation
+- Explicit service/CPU/memory behavior, cache routing, queue delivery, retries, timeouts and dependency joins
+- Explainable results, saved run comparisons, canvas overlays and semantic/layout checkpoint comparisons
 
-Drafts stay in this browser and origin. Export JSON for durable backups or transfer. This bootstrap does not provide accounts, server projects, engineering rule evaluation, capacity calculation, YAML, or collaboration.
+Work stays in this browser and origin. Export a project archive to preserve checkpoints and engineering evidence. Missing measurements remain unknown; simulation results describe the supplied model and do not replace production load testing. Read the [engineering guide](docs/engineering/README.md) for supported behavior and limitations. Accounts, server projects, YAML/CLI, provider deployments, collaboration and AI remain separate workstreams.
+
+![SwiftBuild scenario simulation with explicitly illustrative inputs](docs/assets/capacity.png)
 
 ## Development and contribution
 

@@ -11,17 +11,21 @@
   },
   "name": "@swiftbuild/canvas",
   "dependencies": {
-    "@swiftbuild/architecture-schema": "workspace:*",
+    "@swiftbuild/component-registry": "workspace:*",
     "@swiftbuild/architecture-model": "workspace:*",
-    "@swiftbuild/graph-engine": "workspace:*",
+    "@swiftbuild/architecture-schema": "workspace:*",
+    "@swiftbuild/capacity-engine": "workspace:*",
     "@swiftbuild/components-core": "workspace:*",
-    "@swiftbuild/ui": "workspace:*",
     "@swiftbuild/design-tokens": "workspace:*",
+    "@swiftbuild/graph-engine": "workspace:*",
+    "@swiftbuild/rule-engine": "workspace:*",
+    "@swiftbuild/ui": "workspace:*",
     "@xyflow/react": "12.12.0",
-    "zustand": "^5.0.8",
+    "lucide-react": "^0.577.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
-    "lucide-react": "^0.577.0"
+    "zod": "^4.6.5",
+    "zustand": "^5.0.8"
   },
   "devDependencies": {
     "@types/react": "^19.2.2",

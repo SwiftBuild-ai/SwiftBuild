@@ -33,8 +33,21 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" data-theme="light" className={inter.variable}>
-      <body>{children}</body>
+    <html
+      lang="en"
+      data-theme="dark"
+      suppressHydrationWarning
+      className={inter.variable}
+    >
+      <body>
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "try{document.documentElement.dataset.theme=localStorage.getItem('swiftbuild.theme')==='light'?'light':'dark'}catch{}",
+          }}
+        />
+        {children}
+      </body>
     </html>
   );
 }

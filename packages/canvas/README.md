@@ -1,8 +1,8 @@
 # canvas
 
-React Flow adapter and per-instance Zustand editor. Workbench mounts a provider with immutable document history and transient selection. Engineering workflows connect requirements, decisions, scenarios, profiles, findings and checkpoints. The browser simulation worker is cancellable and emits progress, versioned reports and incomplete states.
+Interactive graph adapter and per-instance editor store. Workbench mounts a provider with immutable document history and transient selection. Engineering workflows connect requirements, decisions, scenarios, profiles, findings and checkpoints. The browser simulation worker is cancellable and emits progress, versioned reports and incomplete states.
 
-`WorkspaceAdapter` abstracts asynchronous transactional persistence. IndexedDB saves current work, checkpoint bodies and run summaries atomically with optimistic revisions. Legacy draft migration preserves original localStorage data. `importDocument` enforces 5 MB native imports; validated project archives use 50 MB. Invalid data and failed transactions leave work intact and exportable.
+`WorkspaceAdapter` abstracts asynchronous transactional persistence. IndexedDB saves current work, checkpoint bodies and run summaries atomically with optimistic revisions. Legacy draft migration preserves original localStorage data. `importDocument` enforces 5 MiB native imports; validated project archives use 50 MiB. Invalid data and failed transactions leave work intact and exportable.
 
 The catalog is the default sidebar; the rail includes a keyboard-accessible object list and engineering destinations. Fresh work is blank; commerce and illustrative engineering examples are explicit templates. Custom components embed validated definitions. Inspector tabs expose configuration, capacity and notes. Connections can be created by ports or the C command. Optional minimap and metric overlays complement the object list. Activity reports actual autosaves; locking changes interaction only. Changes require keyboard, E2E and responsive checks.
 

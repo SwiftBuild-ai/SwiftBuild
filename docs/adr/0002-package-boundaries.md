@@ -4,7 +4,7 @@ Status: accepted.
 
 Context: CLI, self-hosted web, and future hosted services must share architecture logic.
 
-Decision: isolate schema, model, graph validation, and declarative components from React and persistence. Inject storage at the editor boundary. Enforce downward imports in lint.
+Decision: isolate schema, model, graph validation, and declarative components from the UI framework and persistence. Inject storage at the editor boundary. Enforce downward imports in lint.
 
 Alternatives: application-owned model; backend-first shared ORM types.
 

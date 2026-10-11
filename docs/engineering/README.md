@@ -18,8 +18,8 @@ Manual reviews require evidence and are invalidated by semantic changes. Calcula
 
 See [capacity models](capacity.md), [worked example](example.md), [measurement CSV](measurements.md), [rule evaluation](rules.md) and [native format](../architecture/native-format.md).
 
-The web shell is Next.js. Engines are pure TypeScript packages with no React, storage, account or hosting dependency. Simulation executes in a cancellable worker. Declarative imports cannot execute code. Supported behaviors are published by `behaviorRegistry`; new behaviors require contracts, numerical references and independently verified engine implementations.
+The web shell is server-rendered. Engines are pure typed packages with no UI-framework, storage, account or hosting dependency. Simulation executes in a cancellable worker. Declarative imports cannot execute code. Supported behaviors are published by `behaviorRegistry`; new behaviors require contracts, numerical references and independently verified engine implementations.
 
 ## Subsequent workstreams
 
-Server projects and authorization, collaboration, provider deployments and calibrated vendor models, a standalone extension SDK, YAML/CLI, remote registry distribution and AI are separate workstreams. Local declarative packs, topology simulation, scenario planning, deterministic rules, semantic comparisons and browser checkpoints are implemented here. See the [roadmap](../roadmap.md).
+Server projects and authorization, collaboration, provider deployments and calibrated vendor models, a standalone extension SDK, YAML/CLI, remote registry distribution and AI are separate workstreams. Local declarative packs, topology simulation, scenario planning, deterministic rules, semantic comparisons and browser checkpoints are implemented here. The target includes a complete self-hostable backend and team workflows; none is implied by current browser persistence. See the [roadmap](../roadmap.md) and [current status](../status.md).

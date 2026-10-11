@@ -11,7 +11,10 @@ export * from '@swiftbuild/project-format';
 export class IndexedWorkspace implements WorkspaceAdapter {
   private connection?: Promise<IDBDatabase>;
   private revision = 0;
-  constructor(private factory: IDBFactory = indexedDB) {}
+  constructor(
+    private factory: IDBFactory = indexedDB,
+    private key = 'current',
+  ) {}
   private open() {
     if (!this.connection)
       this.connection = new Promise<IDBDatabase>((resolve, reject) => {
@@ -37,7 +40,7 @@ export class IndexedWorkspace implements WorkspaceAdapter {
     const db = await this.open();
     return new Promise((resolve, reject) => {
       const transaction = db.transaction('workspace', 'readonly');
-      const request = transaction.objectStore('workspace').get('current');
+      const request = transaction.objectStore('workspace').get(this.key);
       let value: unknown = null;
       request.onsuccess = () => {
         value = request.result ?? null;
@@ -61,7 +64,7 @@ export class IndexedWorkspace implements WorkspaceAdapter {
     return new Promise((resolve, reject) => {
       const transaction = db.transaction('workspace', 'readwrite');
       const store = transaction.objectStore('workspace');
-      const read = store.get('current');
+      const read = store.get(this.key);
       let conflict: Error | undefined;
       const expectedRevision = this.revision;
       const nextRevision = expectedRevision + 1;
@@ -78,7 +81,7 @@ export class IndexedWorkspace implements WorkspaceAdapter {
           return;
         }
         try {
-          store.put({ ...valid, storageRevision: nextRevision }, 'current');
+          store.put({ ...valid, storageRevision: nextRevision }, this.key);
         } catch (error) {
           conflict =
             error instanceof Error

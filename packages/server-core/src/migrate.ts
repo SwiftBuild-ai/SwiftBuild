@@ -1,8 +1,12 @@
 import { createHash } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 import { initialProjects } from './migrations/0001-projects';
+import { initialIdentity } from './migrations/0002-identity';
 export type Migration = { id: string; sql: string };
-export const migrations: readonly Migration[] = [initialProjects];
+export const migrations: readonly Migration[] = [
+  initialProjects,
+  initialIdentity,
+];
 
 export async function transaction<T>(
   pool: Pool,

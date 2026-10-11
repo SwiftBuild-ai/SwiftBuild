@@ -54,7 +54,7 @@ describe.skipIf(!url)(
     });
     beforeEach(async () => {
       await pool.query(
-        'TRUNCATE sb_audit_events, sb_revisions, sb_projects, sb_members, sb_workspaces',
+        'TRUNCATE sb_audit_events, sb_revisions, sb_projects, sb_members, sb_invitations, sb_workspaces',
       );
     });
 
@@ -257,7 +257,7 @@ describe.skipIf(!url)(
         migrate(pool, [
           ...migrations,
           {
-            id: '0002-interrupted',
+            id: '0003-interrupted',
             sql: 'CREATE TABLE sb_interrupted (id integer); SELECT 1/0;',
           },
         ]),
@@ -268,7 +268,7 @@ describe.skipIf(!url)(
       expect(state.rows[0].leftover).toBeNull();
       expect(
         (await pool.query('SELECT id FROM sb_migrations')).rows,
-      ).toHaveLength(1);
+      ).toHaveLength(migrations.length);
     });
   },
 );

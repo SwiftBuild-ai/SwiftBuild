@@ -23,7 +23,8 @@
     "format:check": "prettier --check .",
     "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
     "clean": "node tooling/scripts/clean.mjs",
-    "changeset": "changeset"
+    "changeset": "changeset",
+    "server:operator": "pnpm --filter @swiftbuild/server-core cli"
   },
   "devDependencies": {
     "@changesets/cli": "^2.29.7",

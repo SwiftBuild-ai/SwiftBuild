@@ -4,3 +4,11 @@ export {
   ProjectError,
   type StoredProject,
 } from './projects';
+
+export {
+  createIdentity,
+  issueInvitation,
+  type IdentityConfig,
+} from './identity';
+
+export { identityConfig } from './config';

@@ -17,9 +17,16 @@ const allowed = {
     'graph-engine',
     'capacity-engine',
   ],
+  'project-format': [
+    'architecture-schema',
+    'architecture-model',
+    'graph-engine',
+    'capacity-engine',
+  ],
   'design-tokens': [],
   ui: ['design-tokens'],
   canvas: [
+    'project-format',
     'architecture-schema',
     'architecture-model',
     'graph-engine',

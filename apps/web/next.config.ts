@@ -4,6 +4,7 @@ const config: NextConfig = {
   allowedDevOrigins: ['127.0.0.1'],
   transpilePackages: [
     '@swiftbuild/canvas',
+    '@swiftbuild/project-format',
     '@swiftbuild/ui',
     '@swiftbuild/design-tokens',
     '@swiftbuild/architecture-schema',

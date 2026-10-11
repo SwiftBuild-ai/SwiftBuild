@@ -1,5 +1,5 @@
 name: Documentation improvement
-description: Describe the missing or unclear guidance.
+description: Describe missing, unclear or outdated SwiftBuild guidance.
 body:
   - type: markdown
     attributes:
@@ -8,13 +8,13 @@ body:
     id: problem
     attributes:
       label: Context and proposed outcome
-      description: Describe the missing or unclear guidance.
+      description: Describe missing, unclear or outdated SwiftBuild guidance.
     validations:
       required: true
   - type: textarea
     id: evidence
     attributes:
       label: Evidence and verification
-      description: Include reproduction steps, examples, expected behavior, or acceptance criteria. Remove private data.
+      description: Include document paths, the current implementation evidence, and the expected correction. Distinguish implemented and planned behavior. Remove private data and external brand references.
     validations:
       required: true

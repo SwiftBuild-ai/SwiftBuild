@@ -2,7 +2,7 @@
 
 Install the prerequisites in [DEVELOPMENT.md](DEVELOPMENT.md), fork and clone the SwiftBuild repository, then run `pnpm install` and `pnpm dev`.
 
-Use a focused `swiftbuild/` branch unless the task specifies otherwise. Use Conventional Commits and keep changes coherent. Submit the PR template with motivation, verification, and screenshots for UI changes. Normal PRs use squash merge.
+Use a focused `feat/`, `fix/`, `docs/`, `refactor/`, or `chore/` branch. Use Conventional Commits and keep changes coherent. Submit the PR template with motivation, verification, and screenshots for UI changes. Normal PRs use squash merge.
 
 ## Contribution paths
 

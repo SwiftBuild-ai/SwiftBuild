@@ -14,10 +14,16 @@ const revision = z.number().int().min(1).max(2147483646);
 type Role = 'owner' | 'editor' | 'viewer';
 export class ProjectError extends Error {
   readonly status: 403 | 404 | 409;
-  constructor(status: 403 | 404 | 409, message: string) {
+  readonly code: string;
+  constructor(
+    status: 403 | 404 | 409,
+    message: string,
+    code = 'PROJECT_ERROR',
+  ) {
     super(message);
     this.name = 'ProjectError';
     this.status = status;
+    this.code = code;
   }
 }
 export type StoredProject = {
@@ -55,7 +61,7 @@ async function access(
   write = false,
 ): Promise<Role> {
   const result = await client.query<{ role: Role }>(
-    'SELECT role FROM sb_members WHERE workspace_id = $1 AND user_id = $2 FOR SHARE',
+    'SELECT m.role FROM sb_members m JOIN sb_admitted_users u ON u.user_id=m.user_id AND u.active WHERE m.workspace_id=$1 AND m.user_id=$2 FOR SHARE OF m,u',
     [workspaceId, userId],
   );
   const role = result.rows[0]?.role;
@@ -90,14 +96,14 @@ async function projectAccess(
   const workspaceId = scope.rows[0]?.workspace_id;
   if (!workspaceId)
     throw new ProjectError(404, 'Workspace or project not found.');
-  await access(client, userId, workspaceId, write);
+  const role = await access(client, userId, workspaceId, write);
   const locked = await client.query<{ current_revision: number }>(
     'SELECT current_revision FROM sb_projects WHERE id = $1 FOR UPDATE',
     [projectId],
   );
   if (!locked.rows[0])
     throw new ProjectError(404, 'Workspace or project not found.');
-  return { workspaceId, current: locked.rows[0].current_revision };
+  return { workspaceId, current: locked.rows[0].current_revision, role };
 }
 async function snapshot(
   client: PoolClient,
@@ -126,6 +132,15 @@ export function createProjectStore(pool: Pool) {
       const labelValue = name.parse(label);
       const workspaceId = randomUUID();
       await transaction(pool, async (client) => {
+        if (
+          !(
+            await client.query(
+              'SELECT user_id FROM sb_admitted_users WHERE user_id=$1 AND active FOR SHARE',
+              [userId],
+            )
+          ).rowCount
+        )
+          throw new ProjectError(403, 'Active server admission is required.');
         await client.query(
           'INSERT INTO sb_workspaces (id, name) VALUES ($1,$2)',
           [workspaceId, labelValue],
@@ -202,12 +217,20 @@ export function createProjectStore(pool: Pool) {
       id.parse(projectId);
       if (version !== undefined) revision.parse(version);
       return transaction(pool, async (client) => {
-        const { workspaceId, current } = await projectAccess(
+        const { workspaceId, current, role } = await projectAccess(
           client,
           userId,
           projectId,
         );
-        return snapshot(client, projectId, workspaceId, version ?? current);
+        return {
+          ...(await snapshot(
+            client,
+            projectId,
+            workspaceId,
+            version ?? current,
+          )),
+          role,
+        };
       });
     },
     async saveProject(
@@ -250,6 +273,7 @@ export function createProjectStore(pool: Pool) {
           throw new ProjectError(
             409,
             'Project changed. Preserve your work before reopening the current revision.',
+            'REVISION_CONFLICT',
           );
         const latest = await client.query<{ digest: string }>(
           'SELECT digest FROM sb_revisions WHERE project_id=$1 AND revision=$2',
@@ -284,25 +308,42 @@ export function createProjectStore(pool: Pool) {
         return { id: projectId, workspaceId, revision: next, archive };
       });
     },
-    async listProjects(userId: string, workspaceId: string) {
+    async listWorkspaces(userId: string, after?: string) {
+      actor.parse(userId);
+      if (after) id.parse(after);
+      const result = await pool.query<{ id: string; name: string; role: Role }>(
+        'SELECT w.id,w.name,m.role FROM sb_workspaces w JOIN sb_members m ON m.workspace_id=w.id JOIN sb_admitted_users u ON u.user_id=m.user_id AND u.active WHERE m.user_id=$1 AND ($2::uuid IS NULL OR w.id>$2) ORDER BY w.id LIMIT 100',
+        [userId, after ?? null],
+      );
+      return result.rows;
+    },
+    async listProjects(
+      userId: string,
+      workspaceId: string,
+      before?: { updatedAt: string; id: string },
+    ) {
       actor.parse(userId);
       id.parse(workspaceId);
+      if (before) {
+        id.parse(before.id);
+        z.iso.datetime().parse(before.updatedAt);
+      }
       return transaction(pool, async (client) => {
         await access(client, userId, workspaceId);
         const result = await client.query<{
           id: string;
           name: string;
           current_revision: number;
-          updated_at: Date;
+          updated_at: string;
         }>(
-          'SELECT id, name, current_revision, updated_at FROM sb_projects WHERE workspace_id=$1 ORDER BY updated_at DESC, id LIMIT 100',
-          [workspaceId],
+          `SELECT id,name,current_revision,to_char(updated_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS updated_at FROM sb_projects WHERE workspace_id=$1 AND ($2::timestamptz IS NULL OR (sb_projects.updated_at,id)<($2::timestamptz,$3::uuid)) ORDER BY sb_projects.updated_at DESC,id DESC LIMIT 100`,
+          [workspaceId, before?.updatedAt ?? null, before?.id ?? null],
         );
         return result.rows.map((row) => ({
           id: row.id,
           name: row.name,
           revision: row.current_revision,
-          updatedAt: row.updated_at.toISOString(),
+          updatedAt: row.updated_at,
         }));
       });
     },

@@ -12,3 +12,6 @@ export {
 } from './identity';
 
 export { identityConfig } from './config';
+
+export { connectBackend } from './backend';
+export { createApi, boundedJson, HttpError } from './http';

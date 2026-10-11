@@ -54,6 +54,12 @@ describe.skipIf(!url)(
     });
     beforeEach(async () => {
       await pool.query(
+        `INSERT INTO sb_auth_users (id,name,email,"emailVerified") SELECT label,label,label||'@example.test',false FROM unnest(ARRAY['owner','reader','writer','outsider']) label ON CONFLICT (id) DO NOTHING`,
+      );
+      await pool.query(
+        'INSERT INTO sb_admitted_users (user_id) SELECT id FROM sb_auth_users ON CONFLICT (user_id) DO UPDATE SET active=true',
+      );
+      await pool.query(
         'TRUNCATE sb_audit_events, sb_revisions, sb_projects, sb_members, sb_invitations, sb_workspaces',
       );
     });

@@ -8,15 +8,19 @@
   },
   "scripts": {
     "build": "tsc --noEmit",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "cli": "tsx src/cli.ts"
   },
   "dependencies": {
     "@swiftbuild/project-format": "workspace:*",
+    "better-auth": "1.7.7",
     "pg": "8.23.1",
+    "tsx": "4.20.6",
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@swiftbuild/components-core": "workspace:*",
     "@types/pg": "^8.15.6",
-    "@swiftbuild/components-core": "workspace:*"
+    "jose": "6.2.3"
   }
 }

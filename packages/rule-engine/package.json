@@ -1,0 +1,21 @@
+{
+  "name": "@swiftbuild/rule-engine",
+  "version": "0.0.1",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@swiftbuild/architecture-model": "workspace:*",
+    "@swiftbuild/architecture-schema": "workspace:*",
+    "@swiftbuild/capacity-engine": "workspace:*",
+    "@swiftbuild/graph-engine": "workspace:*"
+  },
+  "devDependencies": {
+    "@swiftbuild/components-core": "workspace:*"
+  }
+}

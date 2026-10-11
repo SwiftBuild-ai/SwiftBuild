@@ -1,4 +1,5 @@
 @import '@xyflow/react/dist/style.css';
+@import './engineering.css';
 .workbench {
   display: flex;
   flex-direction: column;
@@ -126,13 +127,6 @@
   font-weight: 500;
   letter-spacing: -0.15px;
   padding: 0 15px;
-}
-.node-description {
-  font-size: 10px;
-  color: var(--subtle);
-  line-height: 1.6;
-  margin: 6px 15px 12px;
-  max-width: 195px;
 }
 .node-footer {
   border-top: 1px solid var(--border);
@@ -751,13 +745,13 @@
 }
 .breadcrumb-slash {
   font-size: 19px;
-  color: #a1a1aa;
+  color: var(--muted);
 }
 .breadcrumb-icon {
   width: 27px;
   height: 27px;
-  background: #f1c7ff;
-  color: #ab32d9;
+  background: var(--raised);
+  color: var(--selection);
   border-radius: 5px;
   display: flex;
   align-items: center;
@@ -794,7 +788,7 @@
   width: 32px;
 }
 .editor-header-right > .icon-button:last-child {
-  color: #8b5cf6;
+  color: var(--selection);
 }
 .editor-body {
   display: flex;
@@ -868,7 +862,7 @@
   line-height: 24px;
 }
 .catalog-search input::placeholder {
-  color: #a1a1aa;
+  color: var(--muted);
 }
 .catalog-search:focus-within {
   border-color: var(--focus);
@@ -883,7 +877,7 @@
   font-size: 13px;
   padding: 2px 5px;
   border-radius: 4px;
-  color: #a1a1aa;
+  color: var(--muted);
 }
 .catalog-heading {
   margin-top: 14px;
@@ -913,7 +907,7 @@
   border: 0;
   padding: 4px;
   border-radius: 5px;
-  color: #90909a;
+  color: var(--muted);
 }
 .catalog-filter:hover {
   background: var(--hover);
@@ -934,7 +928,7 @@
   padding: 0 24px;
   min-height: 42px;
   text-align: left;
-  color: #454549;
+  color: var(--text);
   font-size: 16px;
   line-height: 22px;
 }
@@ -944,7 +938,7 @@
 }
 .catalog-category > svg:last-child {
   margin-left: auto;
-  color: #93939d;
+  color: var(--muted);
   flex-shrink: 0;
 }
 .catalog-category:hover {
@@ -1030,11 +1024,11 @@
   background: var(--surface);
   font-size: 15px;
   text-align: left;
-  color: #454549;
+  color: var(--text);
   flex-shrink: 0;
 }
 .catalog-create > svg {
-  color: #90909a;
+  color: var(--muted);
 }
 .catalog-create:hover {
   background: var(--raised);
@@ -1167,7 +1161,7 @@
 .canvas-controls > .icon-button {
   width: 34px;
   height: 34px;
-  color: #8d8d99;
+  color: var(--muted);
 }
 .canvas-controls .control-divider {
   height: 30px;
@@ -1180,7 +1174,7 @@
   background: none;
   border: 0;
   font-size: 14px;
-  color: #8d8d99;
+  color: var(--muted);
   padding: 7px 10px;
   border-radius: 4px;
 }
@@ -1317,9 +1311,6 @@
   width: 42px;
   height: 42px;
 }
-.node-description {
-  font-size: 11px;
-}
 .node-footer {
   font-size: 10px;
 }
@@ -1405,13 +1396,13 @@
   color: var(--text);
 }
 [data-theme='dark'] .breadcrumb-icon {
-  background: #503069;
-  color: #eab5ff;
+  background: var(--raised);
+  color: var(--selection);
 }
 [data-theme='dark'] .editor-floating-actions .export-action {
-  background: #fafafa;
-  color: #18181b;
-  border-color: #fafafa;
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
 }
 [data-theme='dark'] .catalog-search input::placeholder {
   color: var(--subtle);
@@ -1559,4 +1550,180 @@
   .modal-heading h2 {
     font-size: 19px;
   }
+}
+/* Registry presentation uses structural tokens; technology colors live in design-tokens. */
+.registry-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 0 14px 16px;
+}
+.registry-filters button {
+  font-size: 11px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  padding: 5px 8px;
+  border-radius: 5px;
+  color: var(--muted);
+}
+.registry-filters button[aria-pressed='true'] {
+  background: var(--raised);
+  color: var(--text);
+  border-color: var(--selection);
+}
+.catalog-category {
+  font-size: 13px;
+  padding: 0 16px;
+}
+.catalog-children {
+  padding: 4px 10px 10px;
+}
+.registry-subheading {
+  display: block;
+  padding: 10px 9px 5px;
+  font: 10px var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+.registry-row {
+  position: relative;
+  border-radius: 7px;
+}
+.registry-row:hover,
+.registry-row:focus-within {
+  background: var(--raised);
+}
+.registry-row .catalog-component {
+  padding: 10px 50px 10px 9px;
+}
+.registry-row .technology-icon {
+  flex-shrink: 0;
+}
+.registry-row-actions {
+  display: flex;
+  position: absolute;
+  right: 7px;
+  top: 10px;
+  gap: 2px;
+}
+.registry-row-actions button {
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  padding: 4px;
+  border-radius: 4px;
+}
+.registry-row-actions button:hover,
+.registry-row-actions button[aria-pressed='true'] {
+  color: var(--selection);
+  background: var(--hover);
+}
+.catalog-create {
+  min-height: 40px;
+  font-size: 12px;
+}
+.component-details dl > div {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+.component-details dd {
+  margin: 0;
+}
+.component-details dd small {
+  display: block;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.technology-card .node-name {
+  font-size: 14px;
+}
+.technology-card .node-footer {
+  font-size: 10px;
+}
+.architecture-card.is-selected {
+  outline: 2px solid var(--selection);
+  outline-offset: 3px;
+}
+.node-hover-actions {
+  position: absolute;
+  top: -32px;
+  right: 0;
+  display: none;
+  gap: 3px;
+  padding: 3px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+}
+.architecture-card:hover .node-hover-actions,
+.architecture-card:focus-within .node-hover-actions {
+  display: flex;
+}
+.node-hover-actions button {
+  border: 0;
+  background: transparent;
+  padding: 4px;
+  font-size: 10px;
+  color: var(--muted);
+}
+.node-hover-actions button:hover {
+  color: var(--text);
+  background: var(--hover);
+}
+.technology-card {
+  min-height: 96px;
+}
+.technology-node-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 15px;
+}
+.technology-node-heading .technology-icon {
+  flex-shrink: 0;
+}
+.technology-node-heading .node-name {
+  padding: 0;
+  font-size: 14px;
+}
+.technology-node-heading span {
+  color: var(--muted);
+  font-size: 11px;
+  display: block;
+  margin-top: 4px;
+}
+.technology-card .node-footer {
+  padding: 8px 15px;
+}
+.technology-card .node-footer .mono {
+  font-size: 10px;
+  color: var(--muted);
+}
+.registry-row .catalog-component {
+  padding-right: 66px;
+}
+.registry-row-actions button {
+  padding: 6px;
+}
+.configuration-advanced {
+  margin: 16px 0;
+  padding: 14px 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.configuration-advanced summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 12px;
+}
+.configuration-advanced summary:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 4px;
 }

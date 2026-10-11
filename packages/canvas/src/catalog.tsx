@@ -1,28 +1,27 @@
 'use client';
-import { useState, type RefObject } from 'react';
+import { useEffect, useState, type RefObject } from 'react';
 import {
   Search,
   ChevronRight,
   ChevronDown,
-  SlidersHorizontal,
   Shapes,
   Plus,
   Network,
   Layers,
   LayoutTemplate,
   Command,
-  ArrowUpRight,
+  Info,
+  Star,
+  Upload,
 } from 'lucide-react';
+import { TechnologyIcon } from '@swiftbuild/ui';
 import type { ComponentDefinition } from '@swiftbuild/architecture-schema';
-import { icons, useEditor } from './graph';
-const groups = [
-  { id: 'client', label: 'Clients & interfaces' },
-  { id: 'compute', label: 'Compute & services' },
-  { id: 'database', label: 'Databases & storage' },
-  { id: 'cache', label: 'Caching' },
-  { id: 'messaging', label: 'Messaging' },
-  { id: 'boundary', label: 'Boundaries' },
-] as const;
+import {
+  catalogCategories,
+  categoryOf,
+  searchComponents,
+} from '@swiftbuild/component-registry';
+import { useEditor } from './editor-context';
 export function CatalogSidebar({
   definitions,
   onAdd,
@@ -30,31 +29,127 @@ export function CatalogSidebar({
   onCustom,
   onTemplates,
   onUtilities,
+  onDetails,
+  onPack,
   inputRef,
 }: {
   definitions: ComponentDefinition[];
-  onAdd: (component: ComponentDefinition) => void;
+  onAdd: (c: ComponentDefinition) => void;
   onBrowse: () => void;
   onCustom: () => void;
   onTemplates: () => void;
   onUtilities: () => void;
+  onDetails: (c: ComponentDefinition) => void;
+  onPack: () => void;
   inputRef: RefObject<HTMLInputElement | null>;
 }) {
-  const [query, setQuery] = useState('');
-  const [expanded, setExpanded] = useState<string[]>([]);
-  const filtered = definitions.filter((c) =>
-    `${c.name} ${c.category} ${c.description}`
-      .toLowerCase()
-      .includes(query.toLowerCase()),
+  const [query, setQuery] = useState(''),
+    [expanded, setExpanded] = useState<string[]>([]),
+    [scope, setScope] = useState('all');
+  const [favorites, setFavorites] = useState<string[]>([]),
+    [recent, setRecent] = useState<string[]>([]),
+    [loaded, setLoaded] = useState(false);
+  useEffect(() => {
+    try {
+      const raw = JSON.parse(
+        localStorage.getItem('swiftbuild.catalog.preferences') ?? '{}',
+      );
+      if (Array.isArray(raw.favorites))
+        setFavorites(
+          raw.favorites.filter((v: unknown) => typeof v === 'string'),
+        );
+      if (Array.isArray(raw.recent))
+        setRecent(raw.recent.filter((v: unknown) => typeof v === 'string'));
+    } catch {
+      /* Preferences are optional; the catalog remains usable in memory. */
+    }
+    setLoaded(true);
+    const added = (event: Event) => {
+      const id = (event as CustomEvent<string>).detail;
+      if (typeof id === 'string')
+        setRecent((ids) => [id, ...ids.filter((v) => v !== id)].slice(0, 12));
+    };
+    window.addEventListener('swiftbuild:component-added', added);
+    return () =>
+      window.removeEventListener('swiftbuild:component-added', added);
+  }, []);
+  useEffect(() => {
+    if (loaded)
+      try {
+        localStorage.setItem(
+          'swiftbuild.catalog.preferences',
+          JSON.stringify({ favorites, recent }),
+        );
+      } catch {
+        /* Preferences are optional; the catalog remains usable in memory. */
+      }
+  }, [favorites, recent, loaded]);
+  const filtered = searchComponents(definitions, query).filter(
+    (c) =>
+      scope === 'all' ||
+      (scope === 'favorites' && favorites.includes(c.id)) ||
+      (scope === 'recent' && recent.includes(c.id)) ||
+      (scope === 'generic' &&
+        (c.catalog?.identity.kind === 'generic' || !c.catalog)) ||
+      (scope === 'technology' &&
+        c.catalog?.identity.kind !== 'generic' &&
+        !!c.catalog),
+  );
+  const insert = (c: ComponentDefinition) => {
+    onAdd(c);
+  };
+  const row = (c: ComponentDefinition) => (
+    <div className="registry-row" key={c.id}>
+      <button
+        className="catalog-component"
+        aria-label={`Add ${c.name}`}
+        draggable
+        onDragStart={(e) => {
+          e.dataTransfer.setData('application/swiftbuild-component', c.id);
+          e.dataTransfer.effectAllowed = 'copy';
+        }}
+        onClick={() => insert(c)}
+      >
+        <TechnologyIcon icon={c.icon} size={24} label={`${c.name} icon`} />
+        <span>
+          <strong>{c.name}</strong>
+          <small>{c.description}</small>
+        </span>
+      </button>
+      <div className="registry-row-actions">
+        <button
+          aria-label={`Details for ${c.name}`}
+          onClick={() => onDetails(c)}
+        >
+          <Info size={14} />
+        </button>
+        <button
+          aria-label={`Favorite ${c.name}`}
+          aria-pressed={favorites.includes(c.id)}
+          onClick={() =>
+            setFavorites((ids) =>
+              ids.includes(c.id)
+                ? ids.filter((id) => id !== c.id)
+                : [...ids, c.id],
+            )
+          }
+        >
+          <Star
+            size={14}
+            fill={favorites.includes(c.id) ? 'currentColor' : 'none'}
+          />
+        </button>
+      </div>
+    </div>
   );
   return (
     <aside className="catalog-sidebar" aria-label="Component catalog">
       <div className="catalog-search">
-        <Search size={19} />
+        <Search size={18} />
         <input
           ref={inputRef}
           aria-label="Search component catalog"
-          placeholder="Search"
+          placeholder="Search technologies"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
@@ -67,97 +162,139 @@ export function CatalogSidebar({
           aria-label="Browse all components"
           onClick={onBrowse}
         >
-          <SlidersHorizontal size={16} />
+          <Shapes size={16} />
         </button>
       </div>
+      <div
+        className="registry-filters"
+        role="group"
+        aria-label="Component library filters"
+      >
+        {[
+          ['all', 'All'],
+          ['technology', 'Technologies'],
+          ['generic', 'Generic'],
+          ['favorites', 'Favorites'],
+          ['recent', 'Recent'],
+        ].map(([id, label]) => (
+          <button
+            key={id}
+            aria-pressed={scope === id}
+            onClick={() => setScope(id!)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
       <div className="catalog-content">
-        {groups
-          .filter(
-            (group) =>
-              !query ||
-              filtered.some((c) => c.category === group.id) ||
-              group.label.toLowerCase().includes(query.toLowerCase()),
-          )
-          .map((group) => {
-            const Icon = icons[group.id];
-            const open = query !== '' || expanded.includes(group.id);
-            const children = (query ? filtered : definitions).filter(
-              (c) => c.category === group.id,
-            );
+        {catalogCategories
+          .filter((g) => filtered.some((c) => categoryOf(c) === g.id))
+          .map((g) => {
+            const open =
+              !!query ||
+              scope === 'favorites' ||
+              scope === 'recent' ||
+              expanded.includes(g.id);
+            const children = filtered.filter((c) => categoryOf(c) === g.id);
             return (
-              <div className="catalog-group" key={group.id}>
+              <div className="catalog-group" key={g.id}>
                 <button
                   className="catalog-category"
                   aria-expanded={open}
                   onClick={() =>
-                    setExpanded((list) =>
-                      list.includes(group.id)
-                        ? list.filter((id) => id !== group.id)
-                        : [...list, group.id],
+                    setExpanded((ids) =>
+                      ids.includes(g.id)
+                        ? ids.filter((id) => id !== g.id)
+                        : [...ids, g.id],
                     )
                   }
                 >
-                  <Icon size={18} strokeWidth={1.65} />
-                  <span>{group.label}</span>
+                  <Layers size={16} />
+                  <span>{g.label}</span>
                   {open ? (
-                    <ChevronDown size={16} />
+                    <ChevronDown size={14} />
                   ) : (
-                    <ChevronRight size={16} />
+                    <ChevronRight size={14} />
                   )}
                 </button>
                 {open && (
                   <div className="catalog-children">
-                    {children.map((component) => (
-                      <button
-                        key={component.id}
-                        className="catalog-component"
-                        onClick={() => onAdd(component)}
-                        aria-label={`Add ${component.name}`}
-                      >
-                        <span>
-                          <strong>{component.name}</strong>
-                          <small>{component.description}</small>
-                        </span>
-                        <Plus size={15} />
-                      </button>
-                    ))}
+                    {scope === 'all' ? (
+                      <>
+                        {children.some(
+                          (c) =>
+                            c.catalog && c.catalog.identity.kind !== 'generic',
+                        ) && (
+                          <span className="registry-subheading">
+                            Technologies
+                          </span>
+                        )}
+                        {children
+                          .filter(
+                            (c) =>
+                              c.catalog &&
+                              c.catalog.identity.kind !== 'generic',
+                          )
+                          .map(row)}
+                        {children.some(
+                          (c) =>
+                            !c.catalog || c.catalog.identity.kind === 'generic',
+                        ) && (
+                          <span className="registry-subheading">
+                            Generic primitives
+                          </span>
+                        )}
+                        {children
+                          .filter(
+                            (c) =>
+                              !c.catalog ||
+                              c.catalog.identity.kind === 'generic',
+                          )
+                          .map(row)}
+                      </>
+                    ) : (
+                      children.map(row)
+                    )}
                   </div>
                 )}
               </div>
             );
           })}
+        {!filtered.length && (
+          <p className="catalog-no-results">
+            No components found. Change the search or library filter.
+          </p>
+        )}
         {!query && (
           <>
             <button className="catalog-category" onClick={onTemplates}>
-              <LayoutTemplate size={18} strokeWidth={1.65} />
+              <LayoutTemplate size={17} />
               <span>Architecture templates</span>
-              <ChevronRight size={16} />
+              <ChevronRight size={14} />
             </button>
             <button className="catalog-category" onClick={onUtilities}>
-              <Command size={18} strokeWidth={1.65} />
+              <Command size={17} />
               <span>Utilities</span>
-              <ChevronRight size={16} />
+              <ChevronRight size={14} />
             </button>
           </>
-        )}
-        {query && !filtered.length && (
-          <p className="catalog-no-results">
-            No components found. Try a different search.
-          </p>
         )}
         <button
           className="catalog-discover"
           aria-label="Add component A"
           onClick={onBrowse}
         >
-          <Shapes size={17} />
-          <span>Browse all components</span>
-          <ArrowUpRight size={14} />
+          <Plus size={16} />
+          Browse all components
         </button>
       </div>
+      <button className="catalog-create" onClick={onPack}>
+        <Upload size={16} />
+        Import component pack
+      </button>
       <button className="catalog-create" onClick={onCustom}>
-        <Plus size={18} />
-        <span>New custom component</span>
+        <Plus size={16} />
+        New custom component
       </button>
     </aside>
   );
@@ -192,7 +329,7 @@ export function ObjectSidebar({ onInspect }: { onInspect: () => void }) {
             const definition = document.components.find(
               (c) => c.id === node.componentId,
             )!;
-            const Icon = icons[definition.category];
+
             return (
               <button
                 key={node.id}
@@ -202,7 +339,7 @@ export function ObjectSidebar({ onInspect }: { onInspect: () => void }) {
                   onInspect();
                 }}
               >
-                <Icon size={17} />
+                <TechnologyIcon icon={definition.icon} size={17} />
                 <span>{node.name}</span>
                 <ChevronRight size={14} />
               </button>

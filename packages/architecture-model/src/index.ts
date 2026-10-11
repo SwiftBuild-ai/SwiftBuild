@@ -4,6 +4,7 @@ import {
   type ArchitectureNode,
   type Layout,
 } from '@swiftbuild/architecture-schema';
+export * from './engineering';
 export function editDocument(
   document: ArchitectureDocument,
   edit: (draft: ArchitectureDocument) => void,
@@ -65,6 +66,51 @@ export function deleteNodes(
     for (const item of [...draft.decisions, ...draft.findings])
       item.edgeIds = item.edgeIds.filter((id) => !edgeIds.has(id));
     draft.deployments = draft.deployments.filter((d) => !removed.has(d.nodeId));
+    draft.performanceProfiles = draft.performanceProfiles.filter(
+      (p) => !removed.has(p.nodeId),
+    );
+    draft.flowPolicies = draft.flowPolicies.filter(
+      (p) =>
+        !edgeIds.has(p.edgeId) &&
+        (!p.cacheNodeId || !removed.has(p.cacheNodeId)),
+    );
+    for (const scenario of draft.scenarios) {
+      scenario.trafficClasses = scenario.trafficClasses.filter(
+        (t) => !removed.has(t.entryNodeId),
+      );
+      scenario.targets = scenario.targets.filter(
+        (t) =>
+          (!t.nodeId || !removed.has(t.nodeId)) &&
+          (!t.trafficClassId ||
+            scenario.trafficClasses.some(
+              (traffic) => traffic.id === t.trafficClassId,
+            )),
+      );
+    }
+    const removedScenarios = new Set(
+      draft.scenarios.filter((s) => !s.trafficClasses.length).map((s) => s.id),
+    );
+    draft.scenarios = draft.scenarios.filter(
+      (s) => !removedScenarios.has(s.id),
+    );
+    const trafficIds = new Set(
+      draft.scenarios.flatMap((s) => s.trafficClasses.map((t) => t.id)),
+    );
+    draft.flowPolicies = draft.flowPolicies.filter(
+      (p) => !p.trafficClassId || trafficIds.has(p.trafficClassId),
+    );
+    draft.assessments = draft.assessments.filter(
+      (a) => !a.scenarioId || !removedScenarios.has(a.scenarioId),
+    );
+    const targetIds = new Set(
+      draft.scenarios.flatMap((s) => s.targets.map((t) => t.id)),
+    );
+    for (const assessment of draft.assessments)
+      if (assessment.targetId && !targetIds.has(assessment.targetId)) {
+        assessment.targetId = undefined;
+        assessment.fingerprint = undefined;
+        assessment.status = 'unknown';
+      }
   });
 }
 export function duplicateNodes(
@@ -102,12 +148,32 @@ export function duplicateNodes(
         }));
       draft.nodes.push(...copies);
       for (const e of document.edges)
-        if (mapping.has(e.source.nodeId) && mapping.has(e.target.nodeId))
+        if (mapping.has(e.source.nodeId) && mapping.has(e.target.nodeId)) {
+          const edgeId = idFactory();
           draft.edges.push({
             ...structuredClone(e),
-            id: idFactory(),
+            id: edgeId,
             source: { ...e.source, nodeId: mapping.get(e.source.nodeId)! },
             target: { ...e.target, nodeId: mapping.get(e.target.nodeId)! },
+          });
+          for (const policy of document.flowPolicies.filter(
+            (p) => p.edgeId === e.id,
+          ))
+            draft.flowPolicies.push({
+              ...structuredClone(policy),
+              id: idFactory(),
+              edgeId,
+              cacheNodeId: policy.cacheNodeId
+                ? (mapping.get(policy.cacheNodeId) ?? policy.cacheNodeId)
+                : undefined,
+            });
+        }
+      for (const profile of document.performanceProfiles)
+        if (mapping.has(profile.nodeId))
+          draft.performanceProfiles.push({
+            ...structuredClone(profile),
+            id: idFactory(),
+            nodeId: mapping.get(profile.nodeId)!,
           });
       for (const view of draft.views)
         for (const [oldId, newId] of mapping) {

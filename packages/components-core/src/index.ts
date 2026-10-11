@@ -158,6 +158,46 @@ export const coreComponents: ComponentDefinition[] = [
     [],
     ['containment'],
   ),
+  def(
+    'worker',
+    'Worker',
+    'compute',
+    'Processes asynchronous messages with explicit dependencies.',
+    [
+      field('runtime', 'Runtime', 'select', 'Node.js', {
+        options: ['Node.js', 'Python', 'Go', 'Java', 'Other'],
+      }),
+      field('replicas', 'Replicas', 'number', 2, { min: 1, max: 1000 }),
+      field('healthChecks', 'Health checks', 'boolean', true),
+      field('region', 'Region', 'string', 'Primary'),
+    ],
+    [
+      port('in', 'Messages', 'input', ['async-message', 'event-stream']),
+      port('out', 'Dependencies', 'output', [
+        'request',
+        'cache-lookup',
+        'database-connection',
+        'async-message',
+      ]),
+    ],
+    ['compute', 'asynchronous-consumer'],
+  ),
+  def(
+    'load-balancer',
+    'Load balancer',
+    'compute',
+    'Routes incoming requests across explicitly weighted destinations.',
+    [
+      field('replicas', 'Replicas', 'number', 2, { min: 1, max: 1000 }),
+      field('healthChecks', 'Health checks', 'boolean', true),
+      field('region', 'Region', 'string', 'Primary'),
+    ],
+    [
+      port('in', 'Requests', 'input', ['request', 'public-access']),
+      port('out', 'Backends', 'output', ['request']),
+    ],
+    ['weighted-routing'],
+  ),
 ];
 export function blankDocument(): ArchitectureDocument {
   return parseDocument({
@@ -183,6 +223,7 @@ export function blankDocument(): ArchitectureDocument {
 export function sampleDocument(): ArchitectureDocument {
   const doc = blankDocument();
   doc.project.name = 'Commerce platform';
+  doc.architecture.name = 'System architecture';
   doc.project.description = 'A resilient foundation for an online storefront.';
   doc.nodes = [
     {
@@ -263,4 +304,145 @@ export function sampleDocument(): ArchitectureDocument {
     database: { x: 770, y: 340 },
   };
   return doc;
+}
+/** Demonstration inputs are illustrative, never advertised as measured capacity. */
+export function engineeringSampleDocument(): ArchitectureDocument {
+  const document = sampleDocument();
+  return parseDocument({
+    ...document,
+    scenarios: [
+      {
+        id: 'scenario-baseline',
+        name: 'Storefront baseline',
+        description: 'Illustrative traffic for exploring capacity workflows.',
+        assumptions:
+          'Illustrative workload and service times. Replace these with representative measurements before using results for production decisions.',
+        trafficClasses: [
+          {
+            id: 'traffic-storefront',
+            name: 'Storefront requests',
+            entryNodeId: 'client',
+            workload: { kind: 'rate', requestsPerSecond: 20 },
+            readFraction: 0.9,
+            payloadBytes: 512,
+            responseBytes: 4096,
+            objectBytes: 2048,
+            retentionDays: 30,
+            arrivals: 'poisson',
+            bursts: [{ startSeconds: 100, durationSeconds: 30, multiplier: 3 }],
+          },
+        ],
+        targets: [
+          {
+            id: 'target-latency',
+            metric: 'p95-latency',
+            comparator: 'at-most',
+            value: 150,
+            unit: 'ms',
+          },
+        ],
+      },
+    ],
+    performanceProfiles: [
+      {
+        id: 'profile-service',
+        nodeId: 'service',
+        model: 'service',
+        serviceTime: { kind: 'exponential', meanMs: 20 },
+        concurrency: 2,
+        replicas: 2,
+        scaling: 'linear',
+      },
+      {
+        id: 'profile-cache',
+        nodeId: 'cache',
+        model: 'cache',
+        serviceTime: { kind: 'constant', meanMs: 1 },
+        concurrency: 4,
+        cacheHitRatio: 0.9,
+        memoryBytes: 2e9,
+      },
+      {
+        id: 'profile-database',
+        nodeId: 'database',
+        model: 'database',
+        serviceTime: { kind: 'exponential', meanMs: 8 },
+        concurrency: 2,
+        storageBytes: 100e9,
+      },
+    ].map((p) => ({
+      ...p,
+      provenance: {
+        kind: 'illustrative',
+        source: 'SwiftBuild engineering example',
+        context: 'Synthetic example inputs; no hardware benchmark.',
+        recordedAt: '2026-10-10T00:00:00Z',
+        limitations:
+          'These numbers demonstrate the model, not vendor or production performance.',
+      },
+    })),
+    flowPolicies: [
+      {
+        id: 'policy-request',
+        edgeId: 'edge-request',
+        callsPerOperation: 1,
+        assumption: 'One API call per external request.',
+      },
+      {
+        id: 'policy-cache',
+        edgeId: 'edge-cache',
+        callsPerOperation: 1,
+        operation: 'read',
+        assumption: 'Reads first consult the cache.',
+        order: 0,
+      },
+      {
+        id: 'policy-database',
+        edgeId: 'edge-database',
+        callsPerOperation: 1,
+        operation: 'cache-aside',
+        cacheNodeId: 'cache',
+        assumption: 'Read misses and all writes reach durable storage.',
+        order: 1,
+      },
+    ],
+    requirements: [
+      {
+        id: 'requirement-checkout',
+        title: 'Responsive storefront',
+        description:
+          'Keep storefront requests within the declared latency target under the baseline workload.',
+        nodeIds: ['service', 'cache', 'database'],
+      },
+    ],
+    assessments: [
+      {
+        id: 'assessment-checkout',
+        requirementId: 'requirement-checkout',
+        scenarioId: 'scenario-baseline',
+        targetId: 'target-latency',
+        status: 'unknown',
+        evidence: 'Awaiting a complete simulation with current inputs.',
+      },
+    ],
+    decisions: [
+      {
+        id: 'decision-cache',
+        title: 'Cache frequently read data',
+        context: 'Read-heavy storefront traffic reaches durable storage.',
+        alternatives: [
+          'Read durable storage directly',
+          'Use an explicit cache-aside path',
+        ],
+        reason:
+          'Explore the effect of an explicitly assumed hit ratio on downstream demand.',
+        consequences:
+          'Cache misses and writes still require storage capacity; hit ratio must be measured.',
+        status: 'proposed',
+        nodeIds: ['cache', 'database'],
+        edgeIds: ['edge-cache', 'edge-database'],
+        requirementIds: ['requirement-checkout'],
+      },
+    ],
+  });
 }

@@ -40,6 +40,10 @@ export function graphIssues(document: ArchitectureDocument): GraphIssue[] {
     'annotations',
     'findings',
     'versions',
+    'scenarios',
+    'performanceProfiles',
+    'flowPolicies',
+    'assessments',
   ] as const;
   for (const key of collections) {
     const ids = new Set<string>();
@@ -56,6 +60,14 @@ export function graphIssues(document: ArchitectureDocument): GraphIssue[] {
     ),
   );
   const versions = new Set(document.versions.map((v) => v.id));
+  if (
+    requirements.size !==
+    document.requirements.length + document.nonFunctionalRequirements.length
+  )
+    add(
+      'requirements',
+      'Requirement IDs must be unique across functional and nonfunctional requirements.',
+    );
   const environments = new Set(document.environments.map((e) => e.id));
   for (const node of document.nodes) {
     const definition = document.components.find(
@@ -101,6 +113,14 @@ export function graphIssues(document: ArchitectureDocument): GraphIssue[] {
         add(component.id, `Duplicate configuration field ${field.key}.`);
       keys.add(field.key);
     }
+    for (const binding of Object.values(
+      component.catalog?.resourceBindings ?? {},
+    ))
+      if (!keys.has(binding.field))
+        add(component.id, `Unknown resource binding field ${binding.field}.`);
+    for (const rule of component.validationRules ?? [])
+      if (!keys.has(rule.field) || !keys.has(rule.limitField))
+        add(component.id, 'Configuration rule references an unknown field.');
     for (const error of configurationErrors(
       component,
       Object.fromEntries(
@@ -155,6 +175,86 @@ export function graphIssues(document: ArchitectureDocument): GraphIssue[] {
       add(deployment.id, 'Missing deployment node.');
     if (!environments.has(deployment.environmentId))
       add(deployment.id, 'Missing deployment environment.');
+  }
+  const scenarioIds = new Set(document.scenarios.map((s) => s.id));
+  const trafficIds = new Set<string>();
+  const targetIds = new Set<string>();
+  for (const scenario of document.scenarios) {
+    for (const traffic of scenario.trafficClasses) {
+      if (trafficIds.has(traffic.id))
+        add(scenario.id, `Duplicate traffic class ${traffic.id}.`);
+      trafficIds.add(traffic.id);
+      if (!nodes.has(traffic.entryNodeId))
+        add(traffic.id, 'Missing traffic entry node.');
+      else if (
+        document.components.find(
+          (c) => c.id === nodes.get(traffic.entryNodeId)!.componentId,
+        )?.category === 'boundary'
+      )
+        add(traffic.id, 'A boundary cannot be a workload entry point.');
+      const bursts = [...traffic.bursts].sort(
+        (a, b) => a.startSeconds - b.startSeconds,
+      );
+      for (let i = 1; i < bursts.length; i++)
+        if (
+          bursts[i]!.startSeconds <
+          bursts[i - 1]!.startSeconds + bursts[i - 1]!.durationSeconds
+        )
+          add(traffic.id, 'Burst intervals must not overlap.');
+    }
+    for (const target of scenario.targets) {
+      if (targetIds.has(target.id)) add(target.id, 'Duplicate target ID.');
+      targetIds.add(target.id);
+      if (target.nodeId && !nodes.has(target.nodeId))
+        add(target.id, 'Missing target node.');
+      if (
+        target.trafficClassId &&
+        !scenario.trafficClasses.some((t) => t.id === target.trafficClassId)
+      )
+        add(target.id, 'Target traffic class must belong to its scenario.');
+    }
+  }
+  const profileNodes = new Set<string>();
+  for (const profile of document.performanceProfiles) {
+    if (!nodes.has(profile.nodeId))
+      add(profile.id, 'Missing performance profile node.');
+    else if (
+      document.components.find(
+        (c) => c.id === nodes.get(profile.nodeId)!.componentId,
+      )?.category === 'boundary'
+    )
+      add(
+        profile.id,
+        'Boundaries do not consume processing capacity; attach the profile to a concrete component.',
+      );
+    if (profileNodes.has(profile.nodeId))
+      add(profile.id, 'Only one performance profile per node is supported.');
+    profileNodes.add(profile.nodeId);
+  }
+  const policyKeys = new Set<string>();
+  for (const policy of document.flowPolicies) {
+    if (!edges.has(policy.edgeId)) add(policy.id, 'Missing flow policy edge.');
+    if (policy.trafficClassId && !trafficIds.has(policy.trafficClassId))
+      add(policy.id, 'Missing flow policy traffic class.');
+    if (
+      policy.cacheNodeId &&
+      !document.performanceProfiles.some(
+        (p) => p.nodeId === policy.cacheNodeId && p.model === 'cache',
+      )
+    )
+      add(policy.id, 'Cache routing requires a cache performance profile.');
+    const key = JSON.stringify([policy.edgeId, policy.trafficClassId ?? null]);
+    if (policyKeys.has(key))
+      add(policy.id, 'Duplicate edge policy for this traffic class.');
+    policyKeys.add(key);
+  }
+  for (const assessment of document.assessments) {
+    if (!requirements.has(assessment.requirementId))
+      add(assessment.id, 'Missing assessed requirement.');
+    if (assessment.scenarioId && !scenarioIds.has(assessment.scenarioId))
+      add(assessment.id, 'Missing assessment scenario.');
+    if (assessment.targetId && !targetIds.has(assessment.targetId))
+      add(assessment.id, 'Missing assessment target.');
   }
   return issues;
 }

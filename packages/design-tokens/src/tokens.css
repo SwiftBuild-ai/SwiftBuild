@@ -1,3 +1,4 @@
+@import './technology.css';
 :root,
 [data-theme='light'] {
   color-scheme: light;
@@ -31,22 +32,22 @@
 }
 [data-theme='dark'] {
   color-scheme: dark;
-  --surface: #15181b;
-  --canvas: #101315;
-  --panel: #191d21;
-  --raised: #22272c;
-  --hover: #292f35;
-  --border: #30373e;
-  --text: #e9edef;
-  --muted: #a2adb6;
-  --subtle: #8b98a2;
-  --accent: #71dcc5;
-  --accent-ink: #0b2922;
-  --focus: #91efe0;
+  --surface: #09090b;
+  --canvas: #000000;
+  --panel: #18181b;
+  --raised: #27272a;
+  --hover: #27272a;
+  --border: #3f3f46;
+  --text: #fafafa;
+  --muted: #a1a1aa;
+  --subtle: #a1a1aa;
+  --accent: #fafafa;
+  --accent-ink: #18181b;
+  --focus: #818cf8;
   --warning: #f3c875;
   --error: #ff9393;
   --success: #71dcc5;
-  --selection: #71dcc5;
+  --selection: #6366f1;
   --client: #9bb9ff;
   --compute: #71dcc5;
   --database: #c4afff;
@@ -56,8 +57,8 @@
   --radius: 8px;
   --font-sans: var(--font-inter, 'Inter'), sans-serif;
   --font-mono: 'IBM Plex Mono', monospace;
-  --shadow: 0 12px 40px #0005;
-  --grid: #293036;
+  --shadow: 0 4px 12px #0003;
+  --grid: #3f3f46;
 }
 * {
   box-sizing: border-box;

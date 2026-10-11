@@ -1,3 +1,3 @@
 # graph-engine
 
-validateDocument combines schema parsing with graphIssues. It checks reference integrity, compatible directional ports, component versions, configuration and containment cycles. compatibleRelationships exposes the intersection of endpoint port relationships. This is structural validation; engineering policies come later.
+`validateDocument` combines schema parsing/migration with `graphIssues`. It checks duplicate IDs, references, compatible directional ports, component versions, configuration, containment cycles, engineering references and burst overlap. `compatibleRelationships` exposes endpoint compatibility for pointer and keyboard connections. Structural integrity is separate from `rule-engine` policy findings.

@@ -1,0 +1,21 @@
+{
+  "name": "@swiftbuild/component-registry",
+  "version": "0.0.1",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@swiftbuild/graph-engine": "workspace:*",
+    "@swiftbuild/architecture-model": "workspace:*"
+  },
+  "dependencies": {
+    "@swiftbuild/architecture-schema": "workspace:*",
+    "@swiftbuild/components-core": "workspace:*",
+    "zod": "^4.1.12"
+  }
+}

@@ -44,6 +44,7 @@ it('rejects dangling decision and deployment references', () => {
     id: 'decision',
     title: 'x',
     context: '',
+    status: 'proposed',
     alternatives: [],
     reason: '',
     consequences: '',

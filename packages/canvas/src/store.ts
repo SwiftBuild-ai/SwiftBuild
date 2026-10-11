@@ -19,10 +19,10 @@ export type EditorState = {
   history: History;
   selected: string[];
   message: string;
-  apply: (edit: (draft: ArchitectureDocument) => void) => void;
+  apply: (edit: (draft: ArchitectureDocument) => void) => boolean;
   replace: (document: ArchitectureDocument) => void;
   select: (ids: string[]) => void;
-  add: (definition: ComponentDefinition, position?: Layout) => void;
+  add: (definition: ComponentDefinition, position?: Layout) => boolean;
   remove: () => void;
   duplicate: () => void;
   undo: () => void;
@@ -43,11 +43,13 @@ export function createEditorStore(
           editDocument(get().history.present, edit),
         );
         set({ history: commit(get().history, next), message: '' });
+        return true;
       } catch (error) {
         set({
           message:
             error instanceof Error ? error.message : 'Unable to apply change.',
         });
+        return false;
       }
     },
     replace: (document) => {
@@ -65,7 +67,7 @@ export function createEditorStore(
       const id = crypto.randomUUID();
       const doc = get().history.present;
       const count = doc.nodes.length;
-      get().apply((draft) => {
+      const saved = get().apply((draft) => {
         if (!draft.components.some((c) => c.id === definition.id))
           draft.components.push(definition);
         draft.nodes.push({
@@ -88,7 +90,8 @@ export function createEditorStore(
             : {}),
         };
       });
-      get().select([id]);
+      if (saved) get().select([id]);
+      return saved;
     },
     remove: () => {
       const state = get();

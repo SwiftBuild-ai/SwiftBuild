@@ -16,6 +16,7 @@
     "test": "vitest run",
     "test:unit": "vitest run",
     "test:e2e": "playwright test",
+    "benchmark:capacity": "vitest run packages/capacity-engine/src/benchmark.test.ts",
     "storybook": "pnpm --filter @swiftbuild/ui storybook",
     "build:storybook": "pnpm --filter @swiftbuild/ui build-storybook",
     "format": "prettier --write .",
@@ -25,17 +26,18 @@
     "changeset": "changeset"
   },
   "devDependencies": {
-    "typescript": "^5.9.3",
+    "@changesets/cli": "^2.29.7",
+    "@eslint/js": "^10.0.0",
+    "@playwright/test": "^1.56.0",
     "@types/node": "^24.10.0",
     "eslint": "^10.0.0",
-    "@eslint/js": "^10.0.0",
-    "typescript-eslint": "^8.46.0",
     "eslint-plugin-react-hooks": "^7.0.1",
+    "fake-indexeddb": "^6.2.5",
     "globals": "^16.5.0",
     "prettier": "^3.6.2",
     "turbo": "^2.6.0",
-    "vitest": "^3.2.4",
-    "@playwright/test": "^1.56.0",
-    "@changesets/cli": "^2.29.7"
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.46.0",
+    "vitest": "^3.2.4"
   }
 }

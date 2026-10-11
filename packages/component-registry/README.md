@@ -1,0 +1,29 @@
+# Component registry
+
+Owns 61 versioned infrastructure definitions and the declarative pack contract. `defaultComponents` also retains the eight existing core primitives. Taxonomy and technology identity are separate from the six vendor-neutral semantic categories. The canvas queries this registry rather than owning product lists.
+
+`searchComponents` searches names, aliases, taxonomy, tags and capabilities. `loadPack` validates pack format/version, unique IDs, configuration defaults, directional ports and resource bindings. Packs are JSON data; they cannot execute scripts or supply remote icons. Unknown icon IDs use a local fallback. The catalog can import a pack up to 5 MB, embeds its definitions and retains its ID/version/license in document metadata. Conflicting definitions require an explicit upgrade; they are never replaced silently.
+
+Each definition has stable identity, independent component/schema versions, a discriminated generic/technology/provider identity, semantic type, catalog category/subcategory, search aliases, locally registered icon ID, configuration and defaults, ports, capabilities, declarative validation rules and capacity-model coverage. Configure provider-specific fields as architectural declarations; this is not a provider API deployment validator.
+
+## Supported technologies
+
+PostgreSQL, MySQL, MariaDB, MongoDB, Amazon DynamoDB, Cassandra, CockroachDB, SQLite; Redis, Memcached, Valkey; Apache Kafka, RabbitMQ, Amazon SQS, Amazon SNS, Apache Pulsar, NATS; NGINX, HAProxy, Cloudflare CDN; Amazon RDS, Amazon EC2, AWS Lambda; Amazon S3, Google Cloud Storage, Azure Blob Storage; Elasticsearch, OpenSearch, ClickHouse, Snowflake; Kubernetes, Docker, Prometheus, Grafana and OpenTelemetry.
+
+Generic clients, networking, compute, storage and containment definitions support vendor-independent design. Legacy primitives remain available, including existing embedded database definitions with engine selectors. Direct technology insertion is the primary workflow.
+
+## Capacity integration and limits
+
+Registered service/database/cache/queue/router behaviors select the relevant profile editor. Names and provider SKUs never establish measured throughput. Explicit resource configuration binds memory, storage, CPU, replica/read-replica counts, cache hit assumptions and queue buffer/retention to an existing profile during configuration commands. Missing profiles remain missing. Service-time evidence is retained with a recalibration warning when deployment bounds change; a measured profile becomes an assumption for the changed deployment until explicitly recalibrated. Undo retains the original evidence classification.
+
+Broker/topic/partition counts, replication modes, TLS, routing strategy, provider tiers, expected workload descriptions and software versions are persisted engineering declarations. They are not inferred physical performance models. Traffic must be supplied through scenarios and graph flow policies. Distributed log internals, provider quotas/costs, TTL-derived cache misses and hardware-specific deployment behavior require separately calibrated model extensions. A generic queue model does not establish exact provider behavior.
+
+Some provider field bounds and storage tier names follow [Lambda configuration](https://docs.aws.amazon.com/lambda/latest/dg/troubleshooting-configuration.html), [SQS queue parameters](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-configure-queue-parameters.html), [Cloud Storage classes](https://docs.cloud.google.com/storage/docs/storage-classes) and [Blob Storage access tiers](https://learn.microsoft.com/en-us/azure/storage/blobs/access-tiers-overview/). Deployment-mode-specific rules beyond the declared schema must be verified against current provider APIs.
+
+## Compatibility and explicit conversion
+
+`legacyMapping` recognizes an unchanged core database definition with an exact PostgreSQL or MySQL identity. `upgradeLegacyNode` preserves node ID/name, edges, layouts, original configuration keys and metadata, adds validated technology defaults and embeds the new definition. The inspector offers this as one undoable operation. Customized schemas/ports and ambiguous engines retain their original definition. Opening or importing a document does not automatically convert it.
+
+## Pack authoring
+
+Use a `swiftbuild-component-pack` manifest with `packVersion: "1.0"`, stable `id`, `name`, semantic `version`, `license` and a nonempty `components` array. Each component must pass `ComponentDefinitionSchema`, include `catalog` and validated defaults, and pass `loadPack`. Keep field and port IDs stable; document changes requiring migration. Publish test fixtures for search, configuration, compatibility, serialization and capacity coverage. Local pack distribution is implemented; remote registry installation and arbitrary extension code are separate workstreams.

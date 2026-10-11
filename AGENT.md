@@ -6,7 +6,9 @@ SwiftBuild is a semantic Architecture IDE. Every component and connection must m
 
 `apps/web` owns the Next.js shell. `architecture-schema` owns Zod contracts; `architecture-model` owns immutable commands and history; `graph-engine` owns reference and connection validation; `components-core` owns declarative generic primitives; `canvas` owns editor interactions; `ui` and `design-tokens` own shared presentation. Dependencies flow down toward the schema. Core packages must never import apps, billing, authentication, cloud infrastructure, or AI providers.
 
-Where should code go? New entity → schema/model. Topology → graph-engine. Editor behavior → canvas. Shared control → ui. Declarative primitive → components-core. App route → web. Future rules, capacity, SDK, CLI, API and providers get packages only when implemented.
+Where should code go? New entity → schema/model. Structural topology → graph-engine. Workload and simulation → capacity-engine. Engineering policy → rule-engine. Editor behavior, workers and browser adapters → canvas. Shared control → ui. Declarative primitive → components-core. App route → web. Future SDK, CLI, API and providers get packages only when implemented.
+
+Technology/provider definitions, taxonomy, aliases and local pack validation belong in component-registry. Keep semantic types vendor-neutral. Existing embedded definitions remain usable; only explicit lossless conversion may change identity. Shared UI owns local SVG icon presentation. Structural dark surfaces are neutral black/zinc, with semantic colors limited to icons, status, ports and restrained focus/selection.
 
 ## Commands and workflow
 
@@ -14,13 +16,13 @@ Read DEVELOPMENT.md. Use `pnpm dev`, `pnpm build`, `pnpm lint`, `pnpm typecheck`
 
 ## Domain conventions
 
-IDs are stable. Layout belongs only in views. Never silently change schemaVersion 1.0. Future formats need explicit deterministic migrations with fixture tests and metadata preservation. Component definitions need validated defaults, capabilities, directional semantic ports, and documentation. Future rules return structured reasons and recommendations and must be independently testable; do not invent a rule engine inside UI code.
+IDs are stable. Layout belongs only in views. Native format is 1.1 with explicit deterministic migration from 1.0; never silently redefine either format. Future formats need migration fixtures and metadata preservation. Component versions remain independent. Definitions need validated defaults, capabilities, directional ports and documentation. Rules return structured evidence and recommendations and must be independently testable. Engines never execute uploaded code or invent missing measurements. Sampling uncertainty is distinct from model accuracy.
 
 ## Frontend and backend conventions
 
 Keep the shell server-rendered and interactive canvas client-side. Use semantic tokens, accessible primitives, labeled actions, visible focus, reduced motion, and the parallel object list. Separate transient editor state from persisted documents. Use selective Zustand subscriptions. Commit a drag once.
 
-There is no backend/database in this bootstrap. Future persistence uses PostgreSQL through an injected adapter and migrations. Never change database structures manually. Validate at server boundaries and enforce authorization server-side when introduced.
+There is no server database. The injected browser adapter uses transactional IndexedDB, retained legacy drafts and optimistic storage revisions. Checkpoints remain outside current documents. Future server persistence uses PostgreSQL through an injected adapter and migrations. Never change database structures manually. Validate at server boundaries and enforce authorization server-side when introduced.
 
 ## Security and completion
 

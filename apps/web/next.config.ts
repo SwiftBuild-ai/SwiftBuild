@@ -10,6 +10,9 @@ const config: NextConfig = {
     '@swiftbuild/architecture-model',
     '@swiftbuild/graph-engine',
     '@swiftbuild/components-core',
+    '@swiftbuild/component-registry',
+    '@swiftbuild/capacity-engine',
+    '@swiftbuild/rule-engine',
   ],
 };
 export default config;

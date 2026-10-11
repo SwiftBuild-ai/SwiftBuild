@@ -33,7 +33,9 @@ Open http://localhost:3000. The workbench restores your browser workspace or sta
 - Explicit service/CPU/memory behavior, cache routing, queue delivery, retries, timeouts and dependency joins
 - Explainable results, saved run comparisons, canvas overlays and semantic/layout checkpoint comparisons
 
-Work stays in this browser and origin. Export a project archive to preserve checkpoints and engineering evidence. Missing measurements remain unknown; simulation results describe the supplied model and do not replace production load testing. Read the [engineering guide](docs/engineering/README.md) for supported behavior and limitations. Accounts, durable server projects, collaboration, YAML/CLI, deployment integration and AI assistance are planned in the [full product roadmap](docs/roadmap.md). Self-hosting currently serves the web application; it does not add server project storage.
+The workbench currently saves work in this browser and origin. Export a project archive to preserve checkpoints and engineering evidence. Optional server mode implements invite-only accounts, transactional server project APIs, immutable revisions and workspace authorization. Account screens support password and configured organizational sign-in, with operator-issued invitation/recovery links requiring no mail server. Server project-list/editor integration and tested operational backup/restore remain planned. See [server setup](docs/self-hosting/README.md) and [API contracts](docs/server-api.md).
+
+Missing measurements remain unknown; simulation results describe the supplied model and do not replace production load testing. Read the [engineering guide](docs/engineering/README.md) for supported behavior and limitations. Collaboration, YAML/CLI architecture tooling, deployment integration and AI assistance remain in the [full product roadmap](docs/roadmap.md).
 
 ![SwiftBuild scenario simulation with explicitly illustrative inputs](docs/assets/capacity.png)
 

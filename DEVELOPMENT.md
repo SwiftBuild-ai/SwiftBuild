@@ -14,7 +14,9 @@ pnpm test:e2e
 
 Install E2E browsers with `pnpm exec playwright install chromium`. On Linux CI use `--with-deps`. Tests start their own application on port 3100. Run `pnpm --filter @swiftbuild/architecture-schema typecheck` for a focused package check.
 
-No database or credentials are required. `.env.example` documents the web port. Local research, design notes, test results, and personal agent preferences are ignored. The pnpm lockfile is tracked.
+Browser-local development requires no database or credentials. `.env.example` documents optional server configuration and the web port. Server mode needs a private database connection, identity secret and explicitly applied migrations; see [server setup](docs/self-hosting/README.md). Local research, design notes, test results, and personal agent preferences are ignored. The pnpm lockfile is tracked.
+
+Database integration tests require `SWIFTBUILD_TEST_DATABASE_URL` pointing to an isolated database whose name ends in `_test`. They create and remove generated test schemas; never use a production connection. Without this variable, database tests are skipped. CI supplies the isolated database; the test output reports the current executed and skipped counts. Operator commands use `pnpm server:operator`; account and API routes are documented in the [server API guide](docs/server-api.md).
 
 The browser workspace uses transactional IndexedDB and is specific to the origin. Migration retains the legacy localStorage draft. Export a project archive before clearing site data. Stale tabs cannot overwrite a newer storage revision; export in-memory work before reloading after a conflict. Private security reporting must be configured before public publication.
 

@@ -11,6 +11,13 @@ graph TD
   web --> canvas
   web --> ui
   web --> tokens[design-tokens]
+  web --> server[server-core]
+  server --> archives[project-format]
+  canvas --> archives
+  archives --> schema[architecture-schema]
+  archives --> model[architecture-model]
+  archives --> graph[graph-engine]
+  archives --> capacity[capacity-engine]
   canvas --> schema[architecture-schema]
   canvas --> model[architecture-model]
   canvas --> graph[graph-engine]
@@ -46,6 +53,8 @@ graph TD
 | `canvas`                                | Editor interactions, per-instance store, browser adapters and worker orchestration                           |
 | `ui`, `design-tokens`                   | Shared accessible controls, local icons and semantic presentation tokens                                     |
 | `apps/web`                              | Server-rendered shell, application routes and bundled assets                                                 |
+| `project-format`                        | Host-independent validated archives, byte limits and asynchronous storage contract                           |
+| `server-core`                           | Server identity, transactional persistence, migrations, operator commands and HTTP boundaries                |
 
 Core packages do not depend on hosting, accounts or a server database. UI owns local SVG presentation without registry or architecture dependencies. Registry identity extends embedded definitions without replacing semantic types. Package boundaries are enforced by `pnpm boundaries`.
 
@@ -55,10 +64,12 @@ The editor owns validated immutable documents, bounded undo history, selection a
 
 The injected `WorkspaceAdapter` reads and writes validated project archives asynchronously. The browser implementation atomically persists current work, external checkpoint bodies and run summaries with optimistic storage revisions. Legacy drafts are retained after migration. Stale tabs cannot silently overwrite newer saves; failed writes leave work exportable. Preferences are separate from transactional architecture data.
 
+The optional server stores immutable numbered archive revisions with membership-checked transactional writes and audit events. Identity uses invite-only local accounts and configured organizational OIDC, database sessions and explicit account linking. The web host exposes account screens and an authenticated [HTTP API](../server-api.md). Project saves require strong revision tags and retry operation IDs. Server project IDs remain separate from embedded model IDs. See [storage](../adr/0007-server-project-storage.md) and [identity](../adr/0008-invite-only-identity.md) decisions. The canvas has not yet been connected to this server API.
+
 Requirements, decisions, scenarios, declarative local packs, engineering findings, semantic comparisons and named checkpoints are implemented workflows. A supported generic behavior does not establish provider-specific performance. See [engineering methods](../engineering/README.md) and [current status](../status.md).
 
 ## Target architecture
 
-A complete self-hostable backend is required by the [roadmap](../roadmap.md). Future server adapters must preserve domain contracts while adding durable projects, migrations, authorization and revision conflict handling. Shared review and concurrent editing depend on that foundation. Do not introduce future packages or document hypothetical endpoints as existing APIs.
+A complete self-hostable backend is required by the [roadmap](../roadmap.md). The storage, identity and HTTP foundations are implemented; server editor adapters, browser promotion and operational backup/restore are remaining integration work. Shared review and concurrent editing depend on that completed foundation. Do not introduce future packages or document hypothetical endpoints as existing APIs.
 
 Accepted decisions live in [the decision records](../adr/0001-native-architecture-format.md). Their status records actual decisions, not completion of every future consequence. New implementation decisions require their own records; roadmap proposals do not supersede accepted history.

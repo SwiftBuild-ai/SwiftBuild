@@ -6,6 +6,7 @@ Start with [current status](status.md) for implemented capabilities and verifica
 | -------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
 | Run SwiftBuild locally                       | [Development](../DEVELOPMENT.md)                                                                       |
 | Host the current web application             | [Self-hosting and recovery](self-hosting/README.md)                                                    |
+| Configure accounts and use server projects   | [Server setup](self-hosting/README.md), [HTTP API](server-api.md)                                      |
 | Understand package ownership                 | [Architecture](architecture/README.md)                                                                 |
 | Import, export or migrate documents          | [Native files and archives](architecture/native-format.md)                                             |
 | Model workloads and inspect evidence         | [Engineering workflow](engineering/README.md)                                                          |

@@ -8,9 +8,9 @@ Saves atomically insert an immutable numbered revision and audit event and updat
 
 Integration tests use a real database supplied by `SWIFTBUILD_TEST_DATABASE_URL`; its database name must end in `_test`. Tests create and remove only a unique generated schema. Without that variable, database tests are explicitly skipped, not simulated or reported as verified. CI supplies an isolated database. Run `pnpm exec vitest run packages/server-core/src/server.integration.test.ts` with the test connection configured.
 
-This foundation is not a finished server product: invitation/project screens, browser promotion, deployment and backup/restore workflows remain the next integrated slices. Mail will be optional; the default operator workflow uses one-time links. Existing browser-local work remains available.
+This foundation is not a finished server product: project-list/editor screens, browser promotion, deployment and backup/restore workflows remain the next integrated slices. Account invitation and recovery screens are implemented. Mail will be optional; the default operator workflow uses one-time links. Existing browser-local work remains available.
 
-Project and revision metadata lists return at most 100 entries; revision history accepts a before-revision cursor. The HTTP integration must expose a complete project pagination contract before large multi-project workspaces are described as supported. See [storage decision](../../docs/adr/0007-server-project-storage.md).
+Project, workspace and revision metadata lists return at most 100 entries per page. The HTTP API exposes cursors for complete traversal and preserves timestamp precision; see [pagination contracts](../../docs/server-api.md) and the [storage decision](../../docs/adr/0007-server-project-storage.md).
 
 ## Invite-only identity and operator commands
 
@@ -27,7 +27,7 @@ pnpm server:operator invite --email member@example.test --workspace WORKSPACE_ID
 pnpm server:operator recover --email owner@example.test
 ```
 
-The first administrator can be bootstrapped only through local operator access; there is no public first-user registration endpoint. Commands print one-time invitation/recovery links for private delivery and require no mail server. Do not copy these links into public issues or logs. Recovery uses validated, expiring tokens and revokes prior sessions. The web invitation/project screens are a subsequent integration slice; issuing a link alone does not establish a completed user workflow.
+The first administrator can be bootstrapped only through local operator access; there is no public first-user registration endpoint. Commands print one-time invitation/recovery links for private delivery and require no mail server. Do not copy these links into public issues or logs. Recovery uses validated, expiring tokens and revokes prior sessions. Web account screens consume these links; server project-list/editor screens remain planned.
 
 Tests exercise real local account creation, sessions, role admission and password recovery, plus an actual local OIDC protocol fixture with signed tokens and PKCE. A fixture is not verification of a particular deployed organizational provider. Independent production security review remains uncompleted.
 

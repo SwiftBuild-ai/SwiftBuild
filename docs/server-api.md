@@ -1,6 +1,8 @@
 # SwiftBuild server API
 
-Server mode is optional and requires private database/identity configuration and explicitly applied migrations. Browser-local work remains available. Authentication endpoints are exposed at `/api/auth`; local registration requires a valid invitation. Operator-issued links need no mail server. The web sign-in and project screens are the next integration slice.
+Server mode is optional and requires private database/identity configuration and explicitly applied migrations. Browser-local work remains available. Authentication endpoints are exposed at `/api/auth`; local registration requires a valid invitation. Operator-issued links need no mail server.
+
+The `/login`, `/invite`, and `/reset-password` screens support password accounts, configured organizational sign-in, one-time invitation acceptance, and operator-issued password recovery. `/account` shows the admitted identity and offers sign-out. Existing organizational accounts should sign in and then reopen an invitation to accept an additional workspace membership. Password recovery revokes existing sessions. Account pages request no indexing and no referrer transmission. Project-list and editor integration remain planned; the HTTP API is implemented.
 
 | Method     | Path                                    | Behavior                                                                |
 | ---------- | --------------------------------------- | ----------------------------------------------------------------------- |

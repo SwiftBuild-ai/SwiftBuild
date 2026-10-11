@@ -8,4 +8,4 @@ Production redundancy and health checks apply only to explicitly designated prod
 
 Capacity coverage, overload, backlog growth, storage exhaustion and target violations require matching engine output. Imported, stale, unsupported-version and incomplete results cannot establish successful performance assessments. Deadline assessment also accounts for censored and unsuccessful requests. Combined node-and-traffic-class targets currently remain unknown when that exact aggregation is unavailable.
 
-Add a rule with deterministic prerequisites, useful evidence, an actionable recommendation, not-applicable/unknown behavior and independent tests. Keep rule logic out of React and never execute uploaded rule code. The in-app `/guide` route explains built-in rules without requiring an external repository URL.
+Add a rule with deterministic prerequisites, useful evidence, an actionable recommendation, not-applicable/unknown behavior and independent tests. Keep rule logic out of presentation components and never execute uploaded rule code. The in-app `/guide` route explains built-in rules without requiring an external repository URL.

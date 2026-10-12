@@ -40,6 +40,13 @@ jobs:
       - run: pnpm build:storybook
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:e2e
+      - run: pnpm exec playwright test --config playwright.server.config.ts
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: server-browser-captures
+          path: test-results/**/server-*.png
+          if-no-files-found: ignore
       - uses: actions/upload-artifact@v7
         if: failure()
         with:

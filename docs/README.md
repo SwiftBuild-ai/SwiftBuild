@@ -16,5 +16,6 @@ Start with [current status](status.md) for implemented capabilities and verifica
 | Try a worked scenario                        | [Illustrative example](engineering/example.md)                                                         |
 | Author declarative packs                     | [Current extension contracts](extension-sdk/README.md)                                                 |
 | Contribute or report a concern               | [Contribution guide](../CONTRIBUTING.md), [security](../SECURITY.md), [conduct](../CODE_OF_CONDUCT.md) |
+| Find and scope a contributor task            | [Issue difficulty, evidence and completion criteria](contributor-issues.md)                            |
 
 Accepted architecture decisions are retained in `docs/adr/`. Package READMEs document their current public responsibilities. In-app `/guide` explains engineering findings. Neither a future roadmap entry nor an accepted decision's future consequence establishes implementation or deployment verification.

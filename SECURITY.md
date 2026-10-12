@@ -1,6 +1,6 @@
 # SwiftBuild security
 
-SwiftBuild has not completed an independent production security review. The current web application has no accounts, server project database or server authorization. Self-hosting does not supply those controls.
+SwiftBuild has not completed an independent production security review. Browser-local mode has no account requirement or shared server project storage. Optional server mode implements invite-only accounts, verified sessions, workspace roles, authorized project access and transactional immutable revisions. The default compose configuration remains browser-local. See [server setup](docs/self-hosting/README.md) and [current verification](docs/status.md) for configuration and tested boundaries.
 
 ## Private reporting
 
@@ -16,6 +16,10 @@ Component definitions and packs are declarative data. Uploaded scripts are not e
 
 Browser drafts are not encrypted by SwiftBuild and must not contain credentials. Workspace transactions and optimistic revisions protect against partial saves and stale-tab overwrites; they do not provide identity, access control or backups. Export archives to preserve work outside browser storage. No product analytics or remote telemetry is enabled by default.
 
+Server access derives actors from verified sessions and checks active admission and workspace membership inside project transactions. Mutations validate input and expected revisions; uncertain saves retain operation IDs and separate local recovery. Password and optional organizational sign-in use configured identity settings. Operator-issued invitation and password recovery links are one-time secrets and must be delivered privately; no mail server is required. These controls do not establish production readiness or certify a deployed identity provider.
+
+Local server-project recovery is not encrypted or protected by account isolation on a shared browser profile. Sign-out retains it; confirmed-copy cleanup preserves unsaved work. Export recovery before clearing site data. Use HTTPS beyond explicit loopback development, keep secrets outside source control, apply trusted migrations explicitly and separate runtime access from schema ownership.
+
 ## Planned security work
 
-The [roadmap](docs/roadmap.md) requires trusted-boundary validation, authentication, server-enforced authorization, workspace isolation, audit events, secure sessions, migration and recovery tests, dependency review and operational verification before shared server workflows are described as available. Current checks and unverified areas are listed in [current status](docs/status.md).
+The [roadmap](docs/roadmap.md) retains operational deployment, automated least-privilege role provisioning, tested backup/restore, bootstrap-link rotation and complete recovery workflows as unfinished work. Team review and concurrent collaboration remain planned. Independent security review, deployed organizational sign-in and verified private reporting contacts remain unverified. Existing identity, authorization and migration tests establish only their documented tested workflows; see [current status](docs/status.md).

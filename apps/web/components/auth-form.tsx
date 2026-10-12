@@ -1,6 +1,7 @@
 'use client';
 import { useState, type FormEvent } from 'react';
 import { Button } from '@swiftbuild/ui';
+import { clearConfirmedRecovery } from '../client/project-recovery';
 type Mode = 'login' | 'invite' | 'reset';
 async function post(path: string, body: unknown, token?: string) {
   const response = await fetch(path, {
@@ -252,11 +253,42 @@ export function AuthForm({
     </>
   );
 }
-export function SignOut() {
+export function SignOut({ userId }: { userId?: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
   return (
     <div className="account-actions">
+      {userId && (
+        <>
+          <p>
+            Sign-out leaves project recovery on this browser. You can clear
+            confirmed copies; unsaved recovery is retained.
+          </p>
+          <Button
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true);
+              setError('');
+              try {
+                const count = await clearConfirmedRecovery(userId);
+                setMessage(
+                  `${count} confirmed recovery copies cleared. Unsaved work was retained.`,
+                );
+              } catch {
+                setError(
+                  'Recovery cleanup failed. Your stored work was preserved.',
+                );
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            Clear confirmed project copies
+          </Button>
+          {message && <p role="status">{message}</p>}
+        </>
+      )}
       <Button
         disabled={busy}
         onClick={async () => {

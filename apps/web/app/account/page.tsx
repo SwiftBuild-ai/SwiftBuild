@@ -23,11 +23,11 @@ export default async function Account() {
         <>
           <p>Signed in as {context.session.user.email}.</p>
           <p>
-            Your server account is ready. Project-list and editor integration
-            are planned in the next delivery slice. You can continue working in
-            your local draft.
+            Open your server projects or continue working in your independent
+            local draft.
           </p>
-          <SignOut />
+          <a href="/projects">Open server projects</a>
+          <SignOut userId={context.session.user.id} />
         </>
       ) : (
         <p role="status">

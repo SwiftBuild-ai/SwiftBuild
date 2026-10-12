@@ -65,6 +65,7 @@ test('server editing preserves revisions, stale/offline recovery and complete lo
   const saved = () =>
     page.getByRole('status').filter({ hasText: 'Saved to server' });
   await expect(saved()).toBeVisible();
+  await expect(page.getByRole('main')).toHaveCount(1);
   await page
     .getByRole('navigation', { name: 'Editor tools' })
     .getByRole('button', { name: 'Architecture templates', exact: true })
@@ -83,6 +84,16 @@ test('server editing preserves revisions, stale/offline recovery and complete lo
   await page.reload();
   await expect(page.locator('.react-flow__node')).toHaveCount(4);
   await expect(saved()).toBeVisible();
+  await page
+    .getByRole('button', { name: 'Revision history', exact: true })
+    .click();
+  await expect(
+    page.getByRole('dialog', { name: 'Saved revisions' }),
+  ).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(
+    page.getByRole('dialog', { name: 'Saved revisions' }),
+  ).toBeHidden();
   await page
     .getByRole('button', { name: 'Revision history', exact: true })
     .click();

@@ -18,6 +18,46 @@ export interface RecoveryStore {
   read(): Promise<Recovery | null>;
   write(value: Recovery): Promise<void>;
 }
+export async function clearConfirmedRecovery(
+  userId: string,
+  factory: IDBFactory = indexedDB,
+): Promise<number> {
+  const db = await new Promise<IDBDatabase>((resolve, reject) => {
+    const request = factory.open('swiftbuild-server-recovery', 1);
+    request.onupgradeneeded = () =>
+      request.result.createObjectStore('projects');
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+  try {
+    return await new Promise<number>((resolve, reject) => {
+      const tx = db.transaction('projects', 'readwrite');
+      const cursor = tx.objectStore('projects').openCursor();
+      let count = 0;
+      cursor.onsuccess = () => {
+        const row = cursor.result;
+        if (!row) return;
+        if (typeof row.key === 'string' && row.key.startsWith(userId + ':')) {
+          try {
+            const value = checkedRecovery(row.value);
+            if (!value.dirty) {
+              row.delete();
+              count++;
+            }
+          } catch {
+            /* Preserve unknown or corrupt recovery records. */
+          }
+        }
+        row.continue();
+      };
+      tx.oncomplete = () => resolve(count);
+      tx.onabort = tx.onerror = () =>
+        reject(tx.error ?? new Error('Recovery cleanup failed.'));
+    });
+  } finally {
+    db.close();
+  }
+}
 export function checkedRecovery(input: unknown): Recovery {
   if (!input || typeof input !== 'object')
     throw new Error(

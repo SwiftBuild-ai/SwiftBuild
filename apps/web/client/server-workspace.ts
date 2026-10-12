@@ -42,9 +42,12 @@ export class ServerWorkspace implements WorkspaceAdapter {
   constructor(
     readonly project: ServerProject,
     private store: RecoveryStore,
-    private send: typeof fetch = fetch,
+    private send: typeof fetch = (...args) => globalThis.fetch(...args),
   ) {
     this.revision = project.revision;
+  }
+  get confirmedRevision() {
+    return this.revision;
   }
   async inspectRecovery(): Promise<Recovery | null> {
     if (!this.initialized) {
@@ -137,6 +140,8 @@ export class ServerWorkspace implements WorkspaceAdapter {
       dirty: true,
       ...(oldPending ? { pending: oldPending } : {}),
     };
+    if (this.project.role === 'viewer')
+      this.recovery.dirty = !sameArchive(archive, this.project.archive);
     // Persist latest work before a network mutation. A failed local transaction stops the server save.
     await this.store.write(this.recovery);
     if (this.project.role === 'viewer') return;

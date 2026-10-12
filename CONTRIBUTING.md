@@ -2,7 +2,7 @@
 
 Install the prerequisites in [DEVELOPMENT.md](DEVELOPMENT.md), fork and clone the SwiftBuild repository, then run `pnpm install` and `pnpm dev`.
 
-Use a focused `feat/`, `fix/`, `docs/`, `refactor/`, or `chore/` branch. Use Conventional Commits and keep changes coherent. Submit the PR template with motivation, verification, and screenshots for UI changes. Normal PRs use squash merge.
+Use a focused `feat/`, `fix/`, `docs/`, `refactor/`, or `chore/` branch. Use Conventional Commits and keep changes coherent. Submit the PR template with motivation, verification, and screenshots for UI changes. Normal PRs use a regular merge commit, preserving the individual commits. Squash or rebase only when explicitly requested.
 
 Choose a bounded task from the issue tracker using [issue guidance](docs/contributor-issues.md). `good first issue` identifies work with clear entry points and limited prerequisites; `difficulty: medium` identifies work needing broader implementation or failure-path reasoning. Check existing issues and PRs before starting, and describe your intended approach on the issue. Split larger work into independently reviewable slices. Commit each quality improvement or feature slice separately, and merge only after both `verify` and `docker-smoke` pass for the current head. Retarget open dependent PRs before deleting their parent branch.
 

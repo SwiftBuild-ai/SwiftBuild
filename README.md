@@ -57,6 +57,21 @@ docker compose up --build
 
 See [self-hosting](docs/self-hosting/README.md). No managed service is required.
 
+## Star SwiftBuild
+
+If SwiftBuild helps you design better systems, give the repository a star. Help more builders discover it and shape what comes next.
+
+<p align="center">
+  <a href="https://github.com/SwiftBuild-ai/SwiftBuild">
+    <picture>
+      <source media="(prefers-reduced-motion: reduce)" srcset="docs/assets/star-swiftbuild.png" />
+      <img src="docs/assets/star-swiftbuild.gif" alt="Star SwiftBuild — better systems, built together. Open the repository to give it a star." width="900" />
+    </picture>
+  </a>
+</p>
+
+[View the still banner](docs/assets/star-swiftbuild.png).
+
 ## Security and license
 
 See [SECURITY.md](SECURITY.md). Licensed under Apache-2.0. Bundled font and icon notices are listed in [NOTICE](NOTICE).

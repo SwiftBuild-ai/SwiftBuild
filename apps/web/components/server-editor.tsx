@@ -176,7 +176,7 @@ export function ServerEditor({
       </AccountShell>
     );
   return (
-    <main className="server-editor">
+    <div className="server-editor">
       <header className="server-project-bar">
         <a href="/projects" target="_blank" rel="noopener">
           Projects (new tab)
@@ -278,6 +278,6 @@ export function ServerEditor({
           </Button>
         </Modal>
       )}
-    </main>
+    </div>
   );
 }

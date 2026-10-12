@@ -1,21 +1,21 @@
 # SwiftBuild current status
 
-Implementation inventory updated October 12, 2026. Server API foundation is merged at `8603007`; account screens were verified at `5bb1942`. The earlier October 11 documentation baseline at `20dc9ee` is retained below. This page distinguishes source-backed capabilities from dated execution results and does not certify production readiness.
+Implementation inventory updated October 12, 2026. Server editor implementation was verified at `4992e59`, with database-backed browser verification at `7a617bc`. The server API foundation at `8603007`, account delivery and earlier October 11 documentation baseline at `20dc9ee` remain recorded below. This page distinguishes source-backed capabilities from dated execution results and does not certify production readiness.
 
 ## Capability inventory
 
-| Area                 | Current implementation                                                                                              | Boundary                                                                                                               |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| Architecture model   | Native 1.1, explicit 1.0 migration, stable IDs, embedded definitions and separate layout                            | Future incompatible formats require explicit migration                                                                 |
-| Editor               | Searchable catalog, typed connections, grouping, object list, configuration, undo/redo, locking, minimap and themes | No claim that every advanced editing operation in the target vision is complete                                        |
-| Registry             | 61 cataloged definitions plus eight retained primitives; validated declarative local packs                          | No remote distribution, standalone SDK or uploaded executable extensions                                               |
-| Engineering records  | Linked requirements, decisions, scenarios, profiles, evidence and assessments                                       | No team review, deployment drift service or automated operational observation                                          |
-| Validation           | Structural checks and deterministic policy outcomes with evidence and unknown states                                | Declared checks do not establish security or availability guarantees                                                   |
-| Capacity             | Workload estimation, analytical propagation and seeded bounded topology simulation                                  | Limited to registered behavior, declared evidence and supported operating ranges                                       |
-| Persistence          | Browser workspaces plus optional transactional server project APIs, immutable revisions, retry IDs and audit events | Browser editor remains local; server editor/promotion and operational recovery remain planned                          |
-| Accounts             | Invite-only password accounts, configured organizational OIDC, sessions, roles, invitation/recovery screens         | Operator-issued links need no mail server; deployed organizational provider and independent security review unverified |
-| Self-hosting         | Standalone web image, non-root runtime, optional configured API host and separate health/readiness                  | Default compose remains browser-local; full server deployment and backup/restore remain planned                        |
-| Architecture-as-code | Native JSON import/export and pure domain engines                                                                   | YAML, standalone CLI and architecture CI commands are planned                                                          |
+| Area                 | Current implementation                                                                                                 | Boundary                                                                                                               |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Architecture model   | Native 1.1, explicit 1.0 migration, stable IDs, embedded definitions and separate layout                               | Future incompatible formats require explicit migration                                                                 |
+| Editor               | Searchable catalog, typed connections, grouping, object list, configuration, undo/redo, locking, minimap and themes    | No claim that every advanced editing operation in the target vision is complete                                        |
+| Registry             | 61 cataloged definitions plus eight retained primitives; validated declarative local packs                             | No remote distribution, standalone SDK or uploaded executable extensions                                               |
+| Engineering records  | Linked requirements, decisions, scenarios, profiles, evidence and assessments                                          | No team review, deployment drift service or automated operational observation                                          |
+| Validation           | Structural checks and deterministic policy outcomes with evidence and unknown states                                   | Declared checks do not establish security or availability guarantees                                                   |
+| Capacity             | Workload estimation, analytical propagation and seeded bounded topology simulation                                     | Limited to registered behavior, declared evidence and supported operating ranges                                       |
+| Persistence          | Independent browser drafts, authorized server editing, transactional revisions, retry operations and separate recovery | Creation retry persistence across reload and operational backup/restore remain planned                                 |
+| Accounts             | Invite-only password accounts, configured organizational OIDC, sessions, roles, invitation/recovery screens            | Operator-issued links need no mail server; deployed organizational provider and independent security review unverified |
+| Self-hosting         | Standalone web image, non-root runtime, optional configured API host and separate health/readiness                     | Default compose remains browser-local; full server deployment and backup/restore remain planned                        |
+| Architecture-as-code | Native JSON import/export and pure domain engines                                                                      | YAML, standalone CLI and architecture CI commands are planned                                                          |
 
 [Engineering documentation](engineering/README.md) describes supported calculations and limitations. The [roadmap](roadmap.md) preserves the full target platform, including a real backend and collaboration.
 
@@ -31,13 +31,23 @@ No full local browser suite, accessibility certification or backup recovery resu
 
 For new verification results, record the revision, command, environment, outcome and any limitations. Follow [development](../DEVELOPMENT.md); stop the relevant standalone server before rebuilding on a host where its output is locked. Do not delete stored browser work to resolve a build issue.
 
-## Server foundation verification on October 12, 2026
+## Historical server foundation verification on October 12, 2026
 
 Local `pnpm verify` passed formatting, lint/dependency boundaries, types, 73 unit tests and 21 real database integration tests, followed by a successful production build. The database tests use isolated schemas in a disposable `_test` database and exercise migration rollback/checksums, competing writes, authorization, immutable revisions, retry behavior, real password identity, signed local OIDC protocol fixtures and bounded HTTP input. Server foundation PRs passed hosted verification and container smoke checks before merge.
 
 A compiled production HTTP workflow authenticated, created and saved an archive, stopped and restarted the web process, and reopened revision 2 with history intact. An unauthenticated read was rejected. Account browser checks exercised invitation signup, invalid credentials, password sign-in, sign-out invalidation, additional invitation acceptance and password recovery revoking the old session. Fresh desktop dark and mobile light captures were inspected, with keyboard focus and horizontal overflow checks. The 22 browser regressions passed across the full run and a focused rerun after an ambiguous error selector was scoped to the page.
 
 These checks establish the tested local workflows. They do not establish deployed organizational sign-in, full accessibility certification, production backup restoration, runtime database-role provisioning, independent security review or a verified private reporting contact. Project-list/editor integration and the remaining milestone 1 operational gates are unfinished.
+
+## Server editor verification on October 12, 2026
+
+Hosted verification executed all 107 tests, including real database suites, followed by a successful production build, 22 browser-local regressions and three dedicated server browser tests. The dedicated fixture creates an isolated schema in a `_test` database, generates its own identity secret, applies trusted migrations and removes the schema at teardown. It checks disabled credential fields without JavaScript, server create/edit/save/reload, immutable history export, keyboard history dismissal, a single primary editor landmark, stale-write preservation, recovery as a separate project, complete checkpoint promotion without local replacement, offline recovery and viewer previews with direct server writes rejected.
+
+Fresh server editor, recovery and narrow project-list captures were inspected. Both hosted verification and container smoke checks passed. Transport unit tests separately cover uncertain response replay, native fetch binding, recovery storage failure and selective cache cleanup; these are not live production-network fault certification.
+
+Local formatting, lint/dependency boundaries, types, 86 unit tests and production build passed. The 21 local database tests were explicitly skipped after the local container runtime failed startup on a locked service socket. Hosted database and browser results establish the isolated tested workflows independently of that local environment failure. The earlier failures and successful runs remain recorded above.
+
+Server editing, saved-draft promotion and explicit browser recovery are implemented. Default compose is still browser-local. Full deployment, runtime role provisioning, backup/restore, creation retry recovery across reload and complete revision-restoration UI remain unfinished. Deployed organizational sign-in, private reporting contacts, independent security review and full accessibility certification remain unverified.
 
 ## Documentation policy
 

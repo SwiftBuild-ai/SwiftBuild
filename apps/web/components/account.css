@@ -55,6 +55,14 @@
   gap: 18px;
   margin-top: 24px;
 }
+.account-fields {
+  display: grid;
+  gap: 18px;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
 .account-form label {
   display: grid;
   gap: 8px;
@@ -81,6 +89,103 @@
 .account-error {
   color: var(--error) !important;
   overflow-wrap: anywhere;
+}
+.account-wide {
+  width: min(100%, 860px);
+}
+.project-fields {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.project-tools,
+.project-create,
+.project-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+  margin: 20px 0;
+}
+.project-tools label,
+.project-create label {
+  display: grid;
+  gap: 8px;
+  flex: 1;
+  min-width: 180px;
+}
+.project-tools select,
+.project-create input {
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 12px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.project-note {
+  font-size: 12px;
+}
+.project-list {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+.project-list li {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  overflow-wrap: anywhere;
+}
+.project-list li > a:first-child {
+  flex-basis: 100%;
+  font-weight: 600;
+}
+.project-list span {
+  color: var(--muted);
+  font-size: 12px;
+  flex: 1;
+}
+.server-editor {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+}
+.server-project-bar {
+  min-height: 48px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+}
+.server-project-bar span {
+  flex: 1;
+  min-width: 180px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.server-editor .workbench {
+  flex: 1;
+  height: auto;
+  min-height: 420px;
+}
+.server-project-error {
+  padding: 10px 16px;
+  color: var(--error);
+  background: var(--panel);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
 }
 .account-message {
   color: var(--success) !important;

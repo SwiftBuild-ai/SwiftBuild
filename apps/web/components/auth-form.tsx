@@ -1,6 +1,7 @@
 'use client';
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Button } from '@swiftbuild/ui';
+import { clearConfirmedRecovery } from '../client/project-recovery';
 type Mode = 'login' | 'invite' | 'reset';
 async function post(path: string, body: unknown, token?: string) {
   const response = await fetch(path, {
@@ -35,6 +36,8 @@ export function AuthForm({
   oidc: boolean;
   signedIn?: boolean;
 }) {
+  const [interactive, setInteractive] = useState(false);
+  useEffect(() => setInteractive(true), []);
   const [existing, setExisting] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -120,82 +123,91 @@ export function AuthForm({
     );
   return (
     <>
-      <form className="account-form" onSubmit={submit} aria-busy={busy}>
-        {mode === 'invite' && !existing && (
+      <form
+        className="account-form"
+        method="post"
+        onSubmit={submit}
+        aria-busy={busy}
+      >
+        <fieldset className="account-fields" disabled={!interactive || busy}>
+          {mode === 'invite' && !existing && (
+            <label>
+              Name
+              <input
+                name="name"
+                autoComplete="name"
+                required
+                maxLength={120}
+                disabled={busy}
+              />
+            </label>
+          )}
+          {mode !== 'reset' && (
+            <label>
+              Email
+              <input
+                name="email"
+                type="email"
+                autoComplete="email"
+                required
+                maxLength={254}
+                defaultValue={email}
+                readOnly={!!email}
+                disabled={busy}
+              />
+            </label>
+          )}
           <label>
-            Name
+            {mode === 'reset' ? 'New password' : 'Password'}
             <input
-              name="name"
-              autoComplete="name"
-              required
-              maxLength={120}
-              disabled={busy}
-            />
-          </label>
-        )}
-        {mode !== 'reset' && (
-          <label>
-            Email
-            <input
-              name="email"
-              type="email"
-              autoComplete="email"
-              required
-              maxLength={254}
-              defaultValue={email}
-              readOnly={!!email}
-              disabled={busy}
-            />
-          </label>
-        )}
-        <label>
-          {mode === 'reset' ? 'New password' : 'Password'}
-          <input
-            name="password"
-            type="password"
-            autoComplete={
-              mode === 'login' || existing ? 'current-password' : 'new-password'
-            }
-            required
-            minLength={mode === 'login' || existing ? undefined : 12}
-            maxLength={128}
-            disabled={busy}
-            aria-describedby="password-help"
-          />
-        </label>
-        <p id="password-help">
-          {mode === 'login' || existing
-            ? 'Need to recover access? Ask your instance operator for a one-time recovery link.'
-            : 'Use 12–128 characters. A password manager can create and remember a strong password.'}
-        </p>
-        {mode === 'reset' && (
-          <label>
-            Confirm new password
-            <input
-              name="confirmation"
+              name="password"
               type="password"
-              autoComplete="new-password"
+              autoComplete={
+                mode === 'login' || existing
+                  ? 'current-password'
+                  : 'new-password'
+              }
               required
-              minLength={12}
+              minLength={mode === 'login' || existing ? undefined : 12}
               maxLength={128}
               disabled={busy}
+              aria-describedby="password-help"
             />
           </label>
-        )}
-        {error && (
-          <p role="alert" className="account-error">
-            {error}
+          <p id="password-help">
+            {mode === 'login' || existing
+              ? 'Need to recover access? Ask your instance operator for a one-time recovery link.'
+              : 'Use 12–128 characters. A password manager can create and remember a strong password.'}
           </p>
-        )}
-        <Button type="submit" variant="primary" disabled={busy}>
-          {busy
-            ? 'Please wait…'
-            : mode === 'reset'
-              ? 'Update password'
-              : mode === 'invite' && !existing
-                ? 'Create account'
-                : 'Sign in'}
-        </Button>
+          {mode === 'reset' && (
+            <label>
+              Confirm new password
+              <input
+                name="confirmation"
+                type="password"
+                autoComplete="new-password"
+                required
+                minLength={12}
+                maxLength={128}
+                disabled={busy}
+              />
+            </label>
+          )}
+          {error && (
+            <p role="alert" className="account-error">
+              {error}
+            </p>
+          )}
+          <Button type="submit" variant="primary" disabled={busy}>
+            {busy
+              ? 'Please wait…'
+              : mode === 'reset'
+                ? 'Update password'
+                : mode === 'invite' && !existing
+                  ? 'Create account'
+                  : 'Sign in'}
+          </Button>
+        </fieldset>
       </form>
       <div className="account-actions">
         {mode === 'invite' && (
@@ -252,11 +264,42 @@ export function AuthForm({
     </>
   );
 }
-export function SignOut() {
+export function SignOut({ userId }: { userId?: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
   return (
     <div className="account-actions">
+      {userId && (
+        <>
+          <p>
+            Sign-out leaves project recovery on this browser. You can clear
+            confirmed copies; unsaved recovery is retained.
+          </p>
+          <Button
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true);
+              setError('');
+              try {
+                const count = await clearConfirmedRecovery(userId);
+                setMessage(
+                  `${count} confirmed recovery copies cleared. Unsaved work was retained.`,
+                );
+              } catch {
+                setError(
+                  'Recovery cleanup failed. Your stored work was preserved.',
+                );
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            Clear confirmed project copies
+          </Button>
+          {message && <p role="status">{message}</p>}
+        </>
+      )}
       <Button
         disabled={busy}
         onClick={async () => {

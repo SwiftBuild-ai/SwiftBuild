@@ -86,12 +86,14 @@ export type WorkbenchStorage = {
   createAdapter: () => WorkspaceAdapter;
   savedLabel: string;
   description: string;
+  locationLabel?: string;
 };
 export type WorkbenchProps = {
   initialArchive?: ProjectArchive;
   storage?: WorkbenchStorage;
+  onArchiveChange?: (archive: ProjectArchive) => void;
 };
-function Editor({ initialArchive, storage }: WorkbenchProps) {
+function Editor({ initialArchive, storage, onArchiveChange }: WorkbenchProps) {
   const savedLabel = storage?.savedLabel ?? 'Saved locally';
   const activityLabel = storage ? savedLabel : 'Saved draft';
   const document = useEditor((s) => s.history.present);
@@ -161,6 +163,9 @@ function Editor({ initialArchive, storage }: WorkbenchProps) {
   const [events, setEvents] = useState<{ time: string; message: string }[]>([]);
   const catalogSearch = useRef<HTMLInputElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (hydrated) onArchiveChange?.({ ...workspace, document });
+  }, [document, workspace, hydrated, onArchiveChange]);
   useEffect(() => {
     setSidebar(window.innerWidth > 760);
     let active = true;
@@ -1074,7 +1079,10 @@ function Editor({ initialArchive, storage }: WorkbenchProps) {
           />
           <span role="status">{status}</span>
           <span className="status-separator" />
-          <span>Local workspace</span>
+          <span>
+            {storage?.locationLabel ??
+              (storage ? 'Project workspace' : 'Local workspace')}
+          </span>
         </div>
       </footer>
       <input
@@ -1204,6 +1212,13 @@ function Editor({ initialArchive, storage }: WorkbenchProps) {
             <Download size={15} />
             Export JSON
           </Button>
+          {!storage && (
+            <p>
+              <a href="/projects" target="_blank" rel="noopener">
+                Server projects (new tab)
+              </a>
+            </p>
+          )}
         </div>
       </Modal>
       <Modal
@@ -1247,8 +1262,9 @@ function Editor({ initialArchive, storage }: WorkbenchProps) {
           <span>4 components · 3 connections</span>
         </div>
         <p className="template-warning">
-          Using this template replaces your current browser draft. Export a copy
-          first to keep it.
+          Using this template replaces your current{' '}
+          {storage ? 'project' : 'browser draft'}. Export a copy first to keep
+          it.
         </p>
         <div className="confirm-actions">
           <Button onClick={exportJSON}>Export current architecture</Button>
@@ -1597,7 +1613,11 @@ function Editor({ initialArchive, storage }: WorkbenchProps) {
         open={newProject}
         onOpenChange={setNewProject}
         title="Start a new architecture?"
-        description="This replaces the current browser draft. Export JSON first if you want to keep a copy."
+        description={
+          storage
+            ? 'This replaces the current project architecture and autosaves it through project storage. Export an archive first to keep a copy.'
+            : 'This replaces the current browser draft. Export JSON first if you want to keep a copy.'
+        }
       >
         <div className="confirm-actions">
           <Button onClick={exportJSON}>
@@ -1624,7 +1644,11 @@ function Editor({ initialArchive, storage }: WorkbenchProps) {
           if (!open) setPendingImport(null);
         }}
         title="Import architecture?"
-        description="The file is valid. Importing replaces your current browser draft and clears undo history."
+        description={
+          storage
+            ? 'The file is valid. Importing replaces the current project architecture, clears undo history and autosaves through project storage.'
+            : 'The file is valid. Importing replaces your current browser draft and clears undo history.'
+        }
       >
         <p className="import-summary">
           {pendingImport?.project.name} · {pendingImport?.nodes.length}{' '}
@@ -1644,7 +1668,9 @@ function Editor({ initialArchive, storage }: WorkbenchProps) {
               }
             }}
           >
-            Import and replace draft
+            {storage
+              ? 'Import and replace project'
+              : 'Import and replace draft'}
           </Button>
         </div>
       </Modal>

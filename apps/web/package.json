@@ -12,6 +12,7 @@
     "@fontsource/ibm-plex-mono": "^5.2.7",
     "@fontsource/inter": "^5.3.0",
     "@swiftbuild/canvas": "workspace:*",
+    "@swiftbuild/components-core": "workspace:*",
     "@swiftbuild/design-tokens": "workspace:*",
     "@swiftbuild/server-core": "workspace:*",
     "@swiftbuild/ui": "workspace:*",

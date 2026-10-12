@@ -7,6 +7,7 @@ import {
 } from '@swiftbuild/canvas/workspace';
 import {
   BrowserProjectRecovery,
+  clearConfirmedRecovery,
   type Recovery,
   type RecoveryStore,
 } from './project-recovery';
@@ -36,6 +37,22 @@ const changed = (archive: ProjectArchive, name: string) => {
   return next;
 };
 describe('server workspace recovery and retry protocol', () => {
+  it('calls the native browser transport with its global receiver', async () => {
+    const { project, store } = fixture();
+    const original = globalThis.fetch;
+    globalThis.fetch = async function (this: unknown, _input, options) {
+      expect(this).toBe(globalThis);
+      const body = JSON.parse(String(options?.body));
+      return Response.json({ ...project, revision: 1, archive: body.archive });
+    };
+    try {
+      const adapter = new ServerWorkspace(project, store);
+      await adapter.read();
+      await adapter.write(project.archive);
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
   it('resolves a lost response with the original operation before sending a newer edit', async () => {
     const { project, store, data } = fixture();
     const requests: {
@@ -184,6 +201,27 @@ describe('server workspace recovery and retry protocol', () => {
   });
 });
 describe('transactional browser recovery', () => {
+  it('clears only the selected user confirmed caches while retaining dirty and other-user records', async () => {
+    const factory = new IDBFactory();
+    const confirmed = new BrowserProjectRecovery(
+      'user-a:confirmed',
+      () => factory,
+    );
+    const dirty = new BrowserProjectRecovery('user-a:dirty', () => factory);
+    const other = new BrowserProjectRecovery('user-b:confirmed', () => factory);
+    const { project } = fixture();
+    await confirmed.write({
+      version: 1,
+      archive: project.archive,
+      dirty: false,
+    });
+    await dirty.write({ version: 1, archive: project.archive, dirty: true });
+    await other.write({ version: 1, archive: project.archive, dirty: false });
+    expect(await clearConfirmedRecovery('user-a', factory)).toBe(1);
+    expect(await confirmed.read()).toBeNull();
+    expect((await dirty.read())?.dirty).toBe(true);
+    expect(await other.read()).not.toBeNull();
+  });
   it('isolates users/projects and rejects stale tabs before replacement', async () => {
     const factory = new IDBFactory(),
       one = new BrowserProjectRecovery('user-a:project-a', () => factory),

@@ -59,6 +59,9 @@ importers:
       '@swiftbuild/canvas':
         specifier: workspace:*
         version: link:../../packages/canvas
+      '@swiftbuild/components-core':
+        specifier: workspace:*
+        version: link:../../packages/components-core
       '@swiftbuild/design-tokens':
         specifier: workspace:*
         version: link:../../packages/design-tokens

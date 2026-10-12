@@ -11,6 +11,7 @@ graph TD
   web --> canvas
   web --> ui
   web --> tokens[design-tokens]
+  web --> primitives[components-core]
   web --> server[server-core]
   server --> archives[project-format]
   canvas --> archives
@@ -64,12 +65,14 @@ The editor owns validated immutable documents, bounded undo history, selection a
 
 The injected `WorkspaceAdapter` reads and writes validated project archives asynchronously. The browser implementation atomically persists current work, external checkpoint bodies and run summaries with optimistic storage revisions. Legacy drafts are retained after migration. Stale tabs cannot silently overwrite newer saves; failed writes leave work exportable. Preferences are separate from transactional architecture data.
 
-The optional server stores immutable numbered archive revisions with membership-checked transactional writes and audit events. Identity uses invite-only local accounts and configured organizational OIDC, database sessions and explicit account linking. The web host exposes account screens and an authenticated [HTTP API](../server-api.md). Project saves require strong revision tags and retry operation IDs. Server project IDs remain separate from embedded model IDs. See [storage](../adr/0007-server-project-storage.md) and [identity](../adr/0008-invite-only-identity.md) decisions. The canvas has not yet been connected to this server API.
+The optional server stores immutable numbered archive revisions with membership-checked transactional writes and audit events. Identity uses invite-only local accounts and configured organizational OIDC, database sessions and explicit account linking. The web host exposes account/project screens and an authenticated [HTTP API](../server-api.md). Project saves require strong revision tags and retry operation IDs. Server project IDs remain separate from embedded model IDs. See [storage](../adr/0007-server-project-storage.md) and [identity](../adr/0008-invite-only-identity.md) decisions.
+
+The host mounts the canvas through a stable injected storage binding and initial authorized archive. A separate transactional recovery database retains the latest archive and any uncertain operation payload by user/project key. The retained operation is resolved before a newer save; conflicts stop network writes and preserve later local edits. On reopen, unsaved recovery requires an explicit export, separate-project save or discard choice. Viewer previews save only to local recovery. Saved-draft promotion reads and copies a validated complete archive without writing back to the local draft. Cache keys isolate records but do not replace server authorization or establish shared-device confidentiality.
 
 Requirements, decisions, scenarios, declarative local packs, engineering findings, semantic comparisons and named checkpoints are implemented workflows. A supported generic behavior does not establish provider-specific performance. See [engineering methods](../engineering/README.md) and [current status](../status.md).
 
 ## Target architecture
 
-A complete self-hostable backend is required by the [roadmap](../roadmap.md). The storage, identity and HTTP foundations are implemented; server editor adapters, browser promotion and operational backup/restore are remaining integration work. Shared review and concurrent editing depend on that completed foundation. Do not introduce future packages or document hypothetical endpoints as existing APIs.
+A complete self-hostable backend is required by the [roadmap](../roadmap.md). Storage, identity, HTTP routes, server editor integration and explicit saved-draft promotion are implemented. Repeatable full deployment, least-privilege provisioning and operational backup/restore remain unfinished. Shared review and concurrent editing depend on that completed foundation. Do not introduce future packages or document hypothetical endpoints as existing APIs.
 
 Accepted decisions live in [the decision records](../adr/0001-native-architecture-format.md). Their status records actual decisions, not completion of every future consequence. New implementation decisions require their own records; roadmap proposals do not supersede accepted history.

@@ -8,7 +8,7 @@ Native format 1.1 with explicit 1.0 migration; embedded definitions and separate
 
 The catalog contains 35 concrete technology/provider definitions, 26 cataloged generic definitions and eight retained core primitives. Search, aliases, favorites, recents, details, keyboard/drag insertion, contextual configuration, local declarative JSON packs and explicit legacy conversion are implemented. Neutral black/zinc dark surfaces are the default; light mode and restored preferences remain available.
 
-The engines support declared service, database, cache, queue and router behavior. Recursive feedback paths, unattributed initial backlog, absent measurements and out-of-range curves remain unevaluated. Browser storage remains the current editor persistence. Optional transactional server projects, explicit migrations, invite-only identity, authorization and revision APIs are implemented; account screens support operator-issued links without a mail server. See [current status](status.md), [server API](server-api.md) and [model limitations](engineering/capacity.md).
+The engines support declared service, database, cache, queue and router behavior. Recursive feedback paths, unattributed initial backlog, absent measurements and out-of-range curves remain unevaluated. Independent browser drafts and optional server editing are implemented, with transactional revisions, explicit migrations, invite-only identity, authorization, recovery and saved-draft promotion. Account screens consume operator-issued links without a mail server. See [current status](status.md), [server API](server-api.md) and [model limitations](engineering/capacity.md).
 
 ## Dependency order and completion gates
 
@@ -16,7 +16,7 @@ Milestone 1 is **in progress**; milestones 2–8 are **planned**. The critical p
 
 ### 1. Durable server projects and operational foundation
 
-Status: **in progress**. Implemented slices: shared archive contracts, checksum-verified transactional migrations, durable server revisions and audit events, invite-only local/organizational identity, workspace role enforcement, operator-issued recovery, authenticated HTTP routes and account screens. Remaining gates include project-list/editor integration, explicit local-draft promotion, browser recovery/conflict UX, repeatable full server deployment, least-privilege role provisioning and tested database backup/restore. Accepted storage/identity decisions and implementation evidence are linked from [current status](status.md).
+Status: **in progress**. Implemented slices: shared archive contracts, checksum-verified transactional migrations, durable server revisions/audit events, invite-only identity, role enforcement, operator-issued recovery, authenticated HTTP routes, account/project screens, server editing, immutable history exports and explicit complete saved-draft promotion. Browser recovery preserves uncertain operations and stale/offline edits; viewer previews remain local. Remaining gates include persistent creation retries across reload, complete revision-restore UX, operator bootstrap-link rotation, repeatable full server deployment, least-privilege role provisioning and tested database backup/restore. Add isolated job processing when needed by its stated resource/failure requirements. Accepted decisions and implementation evidence are linked from [current status](status.md).
 
 Prerequisite: retain current schema, migration, archive and injected storage contracts; record the server persistence and security design before implementing it.
 

@@ -1,0 +1,102 @@
+{
+  "format": "swiftbuild-component-pack",
+  "packVersion": "1.0",
+  "id": "example.audit-service-pack",
+  "name": "Audit Service Example Pack",
+  "version": "1.0.0",
+  "license": "MIT",
+  "components": [
+    {
+      "id": "example.audit-service",
+      "name": "Audit Service",
+      "description": "A declarative example service that records audit events for an architecture.",
+      "category": "compute",
+      "version": "1.0.0",
+      "schemaVersion": "1.1",
+      "capabilities": ["stateless", "audit-events"],
+      "configurationSchema": [
+        {
+          "key": "runtime",
+          "label": "Runtime",
+          "type": "select",
+          "required": true,
+          "options": ["Node.js", "Python", "Go"],
+          "default": "Node.js"
+        },
+        {
+          "key": "replicas",
+          "label": "Replicas",
+          "type": "number",
+          "required": true,
+          "min": 1,
+          "max": 100,
+          "default": 2,
+          "integer": true
+        },
+        {
+          "key": "cpuCores",
+          "label": "Allocated CPU",
+          "type": "number",
+          "required": true,
+          "min": 0.1,
+          "default": 1,
+          "unit": "cores"
+        },
+        {
+          "key": "memoryGB",
+          "label": "Allocated memory",
+          "type": "number",
+          "required": true,
+          "min": 0.1,
+          "default": 2,
+          "unit": "GB"
+        }
+      ],
+      "ports": [
+        {
+          "id": "in",
+          "label": "Events",
+          "direction": "input",
+          "relationships": ["request", "async-message"]
+        },
+        {
+          "id": "out",
+          "label": "Dependencies",
+          "direction": "output",
+          "relationships": ["database-connection", "async-message"]
+        }
+      ],
+      "constraints": [],
+      "documentation": "Example-only component pack data. It declares configuration defaults and compatible ports, but does not include measured throughput or runtime behavior.",
+      "icon": "service",
+      "tags": ["compute", "example", "audit"],
+      "metadata": {},
+      "catalog": {
+        "category": "compute",
+        "subcategory": "Example service",
+        "identity": {
+          "kind": "generic"
+        },
+        "semanticType": "service",
+        "aliases": ["audit", "events"],
+        "serializationVersion": "1.0",
+        "capacityModel": "service",
+        "resourceBindings": {
+          "replicas": {
+            "field": "replicas",
+            "multiplier": 1
+          },
+          "cpuCores": {
+            "field": "cpuCores",
+            "multiplier": 1
+          },
+          "memoryBytes": {
+            "field": "memoryGB",
+            "multiplier": 1000000000
+          }
+        },
+        "examples": []
+      }
+    }
+  ]
+}

@@ -1,6 +1,12 @@
+<p align="center">
+  <img src="docs/assets/swiftbuild-logo.png" alt="SwiftBuild — modular cube logo and wordmark" width="900" />
+</p>
+
 # SwiftBuild
 
 An open-source Architecture IDE and System Design Workbench. Design systems with components and connections that carry engineering meaning.
+
+[Quickstart](#start-locally) · [Documentation](docs/README.md) · [Roadmap](docs/roadmap.md) · [Contribute](CONTRIBUTING.md)
 
 ![SwiftBuild neutral black architecture canvas with technology catalog and database configuration](docs/assets/workbench.png)
 

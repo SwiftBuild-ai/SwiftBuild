@@ -1,4 +1,6 @@
 import { expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import {
   configurationErrors,
   parseDocument,
@@ -69,6 +71,30 @@ it('loads unique typed definitions with validated defaults and resource referenc
       components: [{ ...infrastructureComponents[0], catalog: undefined }],
     }),
   ).toThrow();
+});
+it('loads the tracked example component pack', () => {
+  const path = fileURLToPath(
+      new URL(
+        '../../../examples/audit-service-pack.swiftbuild-component-pack.json',
+        import.meta.url,
+      ),
+    ),
+    example = loadPack(JSON.parse(readFileSync(path, 'utf8'))),
+    component = example.components[0]!;
+  expect(example.packVersion).toBe('1.0');
+  expect(example.license).toBe('MIT');
+  expect(component.id).toBe('example.audit-service');
+  expect(component.icon).toBe('service');
+  expect(component.configurationSchema.map((f) => [f.key, f.default])).toEqual([
+    ['runtime', 'Node.js'],
+    ['replicas', 2],
+    ['cpuCores', 1],
+    ['memoryGB', 2],
+  ]);
+  expect(component.ports.map((p) => [p.id, p.direction])).toEqual([
+    ['in', 'input'],
+    ['out', 'output'],
+  ]);
 });
 it('searches products, aliases, capabilities and taxonomy without an engine workflow', () => {
   expect(

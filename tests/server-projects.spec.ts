@@ -12,6 +12,22 @@ test.skip(
   !process.env.SWIFTBUILD_BROWSER_TEST,
   'Run with playwright.server.config.ts and an isolated database.',
 );
+test('credential fields cannot submit before client hydration', async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    javaScriptEnabled: false,
+    baseURL: 'http://localhost:3200',
+  });
+  try {
+    const page = await context.newPage();
+    await page.goto('/login');
+    await expect(page.getByLabel('Password', { exact: true })).toBeDisabled();
+    await expect(page.locator('form')).toHaveAttribute('method', 'post');
+  } finally {
+    await context.close();
+  }
+});
 test('server editing preserves revisions, stale/offline recovery and complete local promotion', async ({
   page,
   context,

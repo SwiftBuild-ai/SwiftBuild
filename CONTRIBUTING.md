@@ -4,6 +4,8 @@ Install the prerequisites in [DEVELOPMENT.md](DEVELOPMENT.md), fork and clone th
 
 Use a focused `feat/`, `fix/`, `docs/`, `refactor/`, or `chore/` branch. Use Conventional Commits and keep changes coherent. Submit the PR template with motivation, verification, and screenshots for UI changes. Normal PRs use squash merge.
 
+Choose a bounded task from the issue tracker using [issue guidance](docs/contributor-issues.md). `good first issue` identifies work with clear entry points and limited prerequisites; `difficulty: medium` identifies work needing broader implementation or failure-path reasoning. Check existing issues and PRs before starting, and describe your intended approach on the issue. Split larger work into independently reviewable slices. Commit each quality improvement or feature slice separately, and merge only after both `verify` and `docker-smoke` pass for the current head. Retarget open dependent PRs before deleting their parent branch.
+
 ## Contribution paths
 
 - Documentation: verify claims against source and tests; distinguish implemented, limited and planned behavior. Use SwiftBuild as the only brand in prose and commit messages. Preserve exact commands, dependency/API identifiers and required attribution. Use internal links; keep external research in ignored local notes.

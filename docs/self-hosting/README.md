@@ -22,7 +22,11 @@ Storage quotas, eviction and private-browsing behavior vary. Failed writes are s
 
 ## Optional server accounts and API
 
-The web host implements server identity and project APIs backed by an operator-provided relational database. It does not apply migrations automatically. Account screens are available at `/login`, `/invite`, `/reset-password` and `/account`; server project-list/editor integration remains planned. The native document/archive contracts are unchanged. See [HTTP contracts](../server-api.md) and [server package](../../packages/server-core/README.md).
+The web host implements server identity and project APIs backed by an operator-provided relational database. It does not apply migrations automatically. Account screens are available at `/login`, `/invite`, `/reset-password` and `/account`. `/projects` lists authorized workspaces/projects and creates/imports archives; `/projects/PROJECT_ID` opens the authorized server editor. The native document/archive contracts are unchanged. See [HTTP contracts](../server-api.md) and [server package](../../packages/server-core/README.md).
+
+Server saves first retain a separate browser recovery record, then submit the expected revision and a retained operation ID. Stale writes preserve work and stop network saves. Reopening offers export, a separately authorized project copy, or explicit discard of the local recovery. Revision history exports immutable saved archives. Viewers can inspect and edit local previews but cannot save server revisions. Copying a saved local draft uploads its complete archive only after an explicit action, leaving local storage intact; unsaved edits in another tab are excluded.
+
+Recovery remains browser/origin-specific. Sign-out retains it, and the account screen can clear confirmed copies while preserving unsaved and other-user records. These keys are not encryption or shared-device access control. Export unsaved recovery before replacing the browser or its site data. An offline open editor can preserve/export in-memory work; reopening its server page needs a reachable server and authorized session. Creation retry IDs currently remain in the mounted screen; unconfirmed create/copy recovery across reload is still planned.
 
 For loopback development, first provision a dedicated database and install the repository dependencies. Set configuration in the shell used for both operator commands and the application. A PowerShell example follows; replace the connection placeholder with your private database connection:
 
@@ -48,4 +52,4 @@ Use a separate migration connection with schema-change permission; the applicati
 
 Use a reverse proxy and HTTPS beyond a local machine. Optional server APIs enforce session admission and workspace roles; the browser-local workbench remains accessible independently. Operators must configure any required network restriction and verify their deployment. Do not store credentials in architecture documents. Configure a verified private reporting channel before inviting sensitive reports; see [security](../../SECURITY.md).
 
-The complete operational backend, server editor workflows, backup/restore and job processing remain mandatory target capabilities in the [roadmap](../roadmap.md). Storage, identity and HTTP foundations are implemented; their presence does not complete these remaining gates.
+The complete operational backend, backup/restore and job processing remain mandatory target capabilities in the [roadmap](../roadmap.md). Storage, identity, HTTP and server editing workflows are implemented; their presence does not complete these remaining gates.

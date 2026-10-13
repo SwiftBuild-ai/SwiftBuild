@@ -240,11 +240,21 @@ export function createApi(backend: {
           const body = z
             .object({
               workspaceId: uuid,
+              expectedActorId: z.string().min(1).max(128).optional(),
               operationId: uuid,
               archive: z.unknown(),
             })
             .strict()
             .parse(await boundedJson(request));
+          if (
+            body.expectedActorId !== undefined &&
+            body.expectedActorId !== userId
+          )
+            throw new HttpError(
+              403,
+              'ACTOR_CHANGED',
+              'The signed-in account changed. Creation recovery is preserved.',
+            );
           const project = await backend.projects.createProject(
             userId,
             body.workspaceId,

@@ -128,6 +128,16 @@ describe.skipIf(!database)('authenticated project HTTP boundary', () => {
     expect(response.status).toBe(201);
     return { project: await response.json(), archive };
   }
+  it('rejects a creation intent from a switched account before writing', async () => {
+    const response = await request('projects', 'POST', {
+      workspaceId,
+      operationId: randomUUID(),
+      expectedActorId: 'another-user',
+      archive: workspaceFor(blankDocument()),
+    });
+    expect(response.status).toBe(403);
+    expect((await pool.query('SELECT id FROM sb_projects')).rowCount).toBe(0);
+  });
   it('creates, saves, reconnects and reopens a project with immutable revisions and ETags', async () => {
     const { project, archive } = await create();
     const changed = structuredClone(archive);

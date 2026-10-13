@@ -57,11 +57,36 @@ test('server editing preserves revisions, stale/offline recovery and complete lo
   await page
     .getByLabel('New project name', { exact: true })
     .fill('Durable browser project');
+  let committedCreationId = '';
+  await page.route('**/api/v1/projects', async (route) => {
+    if (route.request().method() !== 'POST') return route.continue();
+    const response = await route.fetch();
+    committedCreationId = (await response.json()).id;
+    await route.abort('failed');
+  });
   await page
     .getByRole('button', { name: 'Create project', exact: true })
     .click();
+  await expect(
+    page.getByRole('button', { name: 'Retry project creation', exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Retry project creation', exact: true }),
+  ).toBeEnabled();
+  await page.unroute('**/api/v1/projects');
+  await page.reload();
+  await expect(
+    page.getByRole('button', {
+      name: 'Export pending creation archive',
+      exact: true,
+    }),
+  ).toBeVisible();
+  await page
+    .getByRole('button', { name: 'Retry project creation', exact: true })
+    .click();
   await page.waitForURL(/\/projects\/[0-9a-f-]+$/);
   const id = new URL(page.url()).pathname.split('/').at(-1)!;
+  expect(id).toBe(committedCreationId);
   const saved = () =>
     page.getByRole('status').filter({ hasText: 'Saved to server' });
   await expect(saved()).toBeVisible();

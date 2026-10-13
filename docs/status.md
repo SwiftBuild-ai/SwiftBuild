@@ -62,3 +62,7 @@ This completes the focused integration, not milestones 1 or 6. Project-creation 
 ## Documentation policy
 
 SwiftBuild is the only brand in maintained prose and commit messages. Exact executable commands, file paths, dependency/API identifiers and required third-party attribution are exceptions. Technology identities remain intact in the implementation and serialized documents. Maintained guides use internal links; source research and temporary audit evidence stay in ignored local directories. Historical release notes and original legal notices retain their original text.
+
+### 2026-10-13 � durable project creation recovery
+
+Creation intents now survive reload for all server creation/copy paths. Transactional insertion rejects competing intents and scoped recovery preserves uncertain responses. Focused recovery tests cover reload, payload replay, competing tabs, account isolation, denial, malformed confirmation and storage failure. The server browser workflow commits a creation, drops its response, reloads and retries the same operation to the original project.

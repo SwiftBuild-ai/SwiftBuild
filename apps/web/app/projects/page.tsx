@@ -25,7 +25,10 @@ export default async function Projects() {
       <div className="eyebrow">SERVER WORKSPACES</div>
       <h1>Your projects</h1>
       {items ? (
-        <ProjectList initialWorkspaces={items} />
+        <ProjectList
+          initialWorkspaces={items}
+          userId={context.state === 'ready' ? context.session!.user.id : ''}
+        />
       ) : (
         <p role="status">
           Server projects are unavailable. Your local draft remains accessible.

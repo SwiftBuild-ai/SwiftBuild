@@ -15,8 +15,9 @@ import {
   sameArchive,
   type ServerProject,
 } from '../client/server-workspace';
-import { api, createProject, downloadArchive } from '../client/project-api';
+import { api, downloadArchive } from '../client/project-api';
 import { AccountShell } from './account-shell';
+import { ProjectCreation } from '../client/project-creation';
 import { analysisAdapter } from '../client/analysis-api';
 type Revision = { revision: number; createdAt: string; actorId: string };
 export function ServerEditor({
@@ -48,8 +49,8 @@ export function ServerEditor({
     ),
   );
   const latest = useRef(project.archive),
-    confirmed = useRef(project.archive),
-    copyOperation = useRef(crypto.randomUUID());
+    confirmed = useRef(project.archive);
+  const [creation] = useState(() => new ProjectCreation(userId));
   const [history, setHistory] = useState<Revision[] | null>(null),
     [before, setBefore] = useState<number | null>(null);
   const onArchiveChange = useCallback((archive: ProjectArchive) => {
@@ -147,11 +148,15 @@ export function ServerEditor({
                   disabled={busy}
                   onClick={() =>
                     void run(async () => {
-                      const result = await createProject(
+                      if (await creation.read(project.workspaceId))
+                        throw new Error(
+                          'An unconfirmed creation already exists. Open projects to retry or export it.',
+                        );
+                      const intent = await creation.prepare(
                         project.workspaceId,
                         recovery.archive,
-                        copyOperation.current,
                       );
+                      const result = await creation.submit(intent);
                       window.location.assign('/projects/' + result.id);
                     })
                   }

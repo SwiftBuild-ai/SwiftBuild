@@ -41,3 +41,9 @@ Project listing requires `workspaceId`. Pages contain at most 100 `items` with `
 HTTP mutations require the configured origin and JSON content type. Actual streamed bytes are bounded before parsing: authentication and small metadata requests use 16 KiB; project request envelopes use the 50 MiB archive limit plus 64 KiB overhead. Archive serialization is separately checked against 50 MiB. Invalid archives and fields are rejected before replacement. Missing membership is hidden as 404; viewers receive 403 on writes. Active admission and membership are locked during transactional project operations, so disabling an account or revoking membership cannot silently race an authorized save.
 
 Responses are not cached. Application errors use `{ error: { code, message }, requestId }` and `X-Request-ID`; storage failures log structured event/status/request-ID fields without request bodies, credentials or archive contents. Authentication-library responses retain their own endpoint shape. Liveness does not establish database readiness, completed deployment verification or security certification.
+
+### Durable creation recovery
+
+The web host persists one unresolved creation intent per signed-in user and workspace in IndexedDB before submitting new projects, imported archives, saved drafts or recovery copies. Reload offers explicit retry and export; retry retains the original archive and operation ID. Storage failure prevents submission. A confirmed response clears only the matching operation. Browser site-data deletion removes recovery, so export before clearing it.
+
+Creation requests may include `expectedActorId` to reject an account switch in an older tab. This field is a precondition; the verified session remains the actor and permissions are still enforced by the storage transaction.

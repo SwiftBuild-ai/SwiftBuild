@@ -1,6 +1,6 @@
 # SwiftBuild current status
 
-Implementation inventory updated October 12, 2026. Server editor implementation was verified at `4992e59`, with database-backed browser verification at `7a617bc`. The server API foundation at `8603007`, account delivery and earlier October 11 documentation baseline at `20dc9ee` remain recorded below. This page distinguishes source-backed capabilities from dated execution results and does not certify production readiness.
+Implementation inventory updated October 13, 2026. Server editor implementation was verified at `4992e59`, with database-backed browser verification at `7a617bc`. The server API foundation at `8603007`, account delivery and earlier October 11 documentation baseline at `20dc9ee` remain recorded below. This page distinguishes source-backed capabilities from dated execution results and does not certify production readiness.
 
 ## Capability inventory
 
@@ -14,7 +14,7 @@ Implementation inventory updated October 12, 2026. Server editor implementation 
 | Capacity             | Workload estimation, analytical propagation and seeded bounded topology simulation                                     | Limited to registered behavior, declared evidence and supported operating ranges                                       |
 | Persistence          | Independent browser drafts, authorized server editing, transactional revisions, retry operations and separate recovery | Creation retry persistence across reload and operational backup/restore remain planned                                 |
 | Accounts             | Invite-only password accounts, configured organizational OIDC, sessions, roles, invitation/recovery screens            | Operator-issued links need no mail server; deployed organizational provider and independent security review unverified |
-| Self-hosting         | Standalone web image, non-root runtime, optional configured API host and separate health/readiness                     | Default compose remains browser-local; full server deployment and backup/restore remain planned                        |
+| Self-hosting         | Standalone web image, non-root runtime, optional configured API host and separate health/readiness                     | Default Compose remains browser-local; optional full-server deployment and isolated backup/restore are verified below  |
 | Architecture-as-code | Native JSON import/export and pure domain engines                                                                      | YAML, standalone CLI and architecture CI commands are planned                                                          |
 
 [Engineering documentation](engineering/README.md) describes supported calculations and limitations. The [roadmap](roadmap.md) preserves the full target platform, including a real backend and collaboration.
@@ -48,6 +48,16 @@ Fresh server editor, recovery and narrow project-list captures were inspected. B
 Local formatting, lint/dependency boundaries, types, 86 unit tests and production build passed. The 21 local database tests were explicitly skipped after the local container runtime failed startup on a locked service socket. Hosted database and browser results establish the isolated tested workflows independently of that local environment failure. The earlier failures and successful runs remain recorded above.
 
 Server editing, saved-draft promotion and explicit browser recovery are implemented. Default compose is still browser-local. Full deployment, runtime role provisioning, backup/restore, creation retry recovery across reload and complete revision-restoration UI remain unfinished. Deployed organizational sign-in, private reporting contacts, independent security review and full accessibility certification remain unverified.
+
+## Engineering computation verification on October 13, 2026
+
+The focused integration adds separate analysis contracts, generated JSON Schema/Pydantic types, canonical cross-language fixtures, durable TypeScript jobs, isolated Python reliability and numerical sensitivity, existing-engine capacity sweeps, and a host-injected engineering workbench. Native format 1.1, archive format 1.0, TypeScript engine behavior, authentication and browser-local editing remain intact. The open-source product uses manual design without AI adoption.
+
+Local verification passed formatting, lint/package boundaries, type checks, 119 TypeScript tests across 24 files (including every real isolated-database test and the complete dispatcher/Python process integration), and the production build. Fourteen Python tests passed, including numerical references, shared/repeated failures, deterministic sampling, schema/canonical fixtures, real child execution, cancellation, deadlines, memory-failure classification, malformed-response redaction and integer/float wire compatibility. Schema and generated-model drift checks passed. Twenty-two browser-local tests passed; all four separate server browser tests passed with a real Python service/dispatcher, including reload and historical bundle export/import. Dark and narrow analysis captures were inspected.
+
+The optional full-server Compose smoke passed with one-CPU/512 MiB computation limits, bounded process counts, explicit migrations and a separate runtime database role. It exercised authenticated HTTP submission, the isolated Python child, durable reports, analysis bundles, database dump/restore into an isolated test database, restored admission/session authorization, and numerical replay. The test deployment and restore database were removed afterward. Docker was reachable through the local Linux environment; its Windows endpoint remained unavailable. Initial health-check failures from excessive Node threads were corrected with direct startup and bounded thread pools. An earlier concurrent browser run collided on artifact cleanup; the suites passed when run sequentially.
+
+This completes the focused integration, not milestones 1 or 6. Project-creation retry recovery across reload, revision restoration, bootstrap-link rotation, outage timelines, richer calibration and the other roadmap gates remain unfinished. Worker topology currently uses one dispatcher/computation pair; retention policy, production recovery certification, independent security review and full accessibility certification remain unverified. See [models](engineering/analysis.md), [deployment](self-hosting/computation.md) and [ADR 0009](adr/0009-engineering-computation-service.md).
 
 ## Documentation policy
 

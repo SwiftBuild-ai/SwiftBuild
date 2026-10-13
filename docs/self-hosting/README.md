@@ -18,7 +18,7 @@ The default compose configuration runs browser-local mode. Each browser and orig
 
 Export a project archive before changing hostname, scheme or port, moving browsers, or clearing site data. Native architecture JSON preserves the current model; project archives also preserve checkpoint bodies and saved engineering evidence. Test recovery by importing an archive into a separate browser profile and inspecting its model and checkpoints. Imported runs remain historical until recomputed. See [file formats and limits](../architecture/native-format.md).
 
-Storage quotas, eviction and private-browsing behavior vary. Failed writes are surfaced and in-memory work remains exportable. After a stale-tab conflict, export the unsaved model before reloading. There is no automatic upload of local drafts or implemented server backup workflow.
+Storage quotas, eviction and private-browsing behavior vary. Failed writes are surfaced and in-memory work remains exportable. After a stale-tab conflict, export the unsaved model before reloading. There is no automatic upload of local drafts. Optional server database backup/restore is described in the [computation deployment guide](computation.md).
 
 ## Optional server accounts and API
 
@@ -44,7 +44,7 @@ Keep the generated secret stable across application restarts and store it privat
 
 Configure all three `SWIFTBUILD_OIDC_*` variables from `.env.example` together to enable organizational sign-in. The configured discovery endpoint and application origin require HTTPS beyond explicit loopback development. A signed local protocol fixture is verified; each deployed organization still needs its own end-to-end check. Existing accounts require explicit identity linking rather than automatic same-email linking.
 
-Use a separate migration connection with schema-change permission; the application runtime should use a role without schema ownership. The operator currently reads `DATABASE_URL` from its process environment, so select the appropriate connection for each process. Automated role provisioning, full database/container configuration and backup/restore verification remain planned. The default compose file does not forward these optional server settings.
+Use a separate migration connection with schema-change permission; the application runtime should use a role without schema ownership. The operator currently reads `DATABASE_URL` from its process environment, so select the appropriate connection for each process. The optional [full-server configuration](computation.md) adds database/runtime-role provisioning, isolated engineering workers and a backup/restore smoke workflow. The default Compose configuration remains browser-local.
 
 `/api/health` checks web process liveness. `/api/v1/ready` checks database connectivity and exact migration checksums. Neither is a backup recovery or security guarantee. Source-based production startup uses `pnpm build` followed by `pnpm --filter @swiftbuild/web start` with the configured environment; stop it before rebuilding on Windows.
 
@@ -52,4 +52,4 @@ Use a separate migration connection with schema-change permission; the applicati
 
 Use a reverse proxy and HTTPS beyond a local machine. Optional server APIs enforce session admission and workspace roles; the browser-local workbench remains accessible independently. Operators must configure any required network restriction and verify their deployment. Do not store credentials in architecture documents. Configure a verified private reporting channel before inviting sensitive reports; see [security](../../SECURITY.md).
 
-The complete operational backend, backup/restore and job processing remain mandatory target capabilities in the [roadmap](../roadmap.md). Storage, identity, HTTP and server editing workflows are implemented; their presence does not complete these remaining gates.
+The complete operational backend and production recovery validation remain mandatory target capabilities in the [roadmap](../roadmap.md). Storage, identity, HTTP and server editing workflows are implemented; their presence does not complete the remaining project-creation recovery, revision restoration and bootstrap rotation gates.

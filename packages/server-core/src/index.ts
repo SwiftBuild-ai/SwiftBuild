@@ -8,6 +8,7 @@ export {
 export {
   createIdentity,
   issueInvitation,
+  rotateBootstrapInvitation,
   type IdentityConfig,
 } from './identity';
 

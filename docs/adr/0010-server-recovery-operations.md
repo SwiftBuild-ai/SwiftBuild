@@ -13,3 +13,5 @@ The server transaction checks active admission and workspace permissions, locks 
 ## Consequences
 
 Creation recovery survives browser reload but requires export before clearing site data. Restoration preserves history rather than moving a revision pointer. New revisions are created even for identical content, so every restoration has an attributable durable receipt. Additive migration rollback uses the matching prior application release with expanded columns retained; do not delete revision metadata or rewrite migration history.
+
+Bootstrap invitation rotation is private operator tooling. It is permitted only between initial issuance and admission, revokes all unused bootstrap links atomically and cannot reset an enrolled instance. Admission and rotation take the same advisory lock before invitation row locks. This serializes races even when preliminary authentication checks happened before rotation. Account credential creation and admission are separate: an interrupted unadmitted account can sign in with the replacement invitation; no revoked link gains admission.

@@ -1,11 +1,15 @@
 import { Pool } from 'pg';
-import { createIdentity, issueInvitation } from './identity';
+import {
+  createIdentity,
+  issueInvitation,
+  rotateBootstrapInvitation,
+} from './identity';
 import { identityConfig } from './config';
 import { migrate } from './migrate';
 const [command, ...args] = process.argv.slice(2);
 if (!command || command === 'help' || command === '--help') {
   console.log(
-    'SwiftBuild operator commands: migrate; bootstrap --email ADDRESS; invite --email ADDRESS --workspace ID --role owner|editor|viewer; recover --email ADDRESS. Configure DATABASE_URL and identity settings in the environment. Links are secrets: deliver them privately.',
+    'SwiftBuild operator commands: migrate; bootstrap --email ADDRESS; bootstrap-rotate --email ADDRESS; invite --email ADDRESS --workspace ID --role owner|editor|viewer; recover --email ADDRESS. Configure DATABASE_URL and identity settings in the environment. Links are secrets: deliver them privately.',
   );
 } else {
   const flags = new Map<string, string>();
@@ -21,7 +25,11 @@ if (!command || command === 'help' || command === '--help') {
       throw new Error('Invalid operator command options.');
     flags.set(key, value);
   }
-  if (!['migrate', 'bootstrap', 'invite', 'recover'].includes(command))
+  if (
+    !['migrate', 'bootstrap', 'bootstrap-rotate', 'invite', 'recover'].includes(
+      command,
+    )
+  )
     throw new Error('Unknown operator command.');
   if (!process.env.DATABASE_URL) throw new Error('Configure DATABASE_URL.');
   const pool = new Pool({
@@ -59,11 +67,19 @@ if (!command || command === 'help' || command === '--help') {
         const role = flags.get('--role');
         if (role && !['owner', 'editor', 'viewer'].includes(role))
           throw new Error('Role must be owner, editor or viewer.');
-        const invitation = await issueInvitation(pool, email, {
-          bootstrap: command === 'bootstrap',
-          workspaceId: flags.get('--workspace'),
-          role: role as 'owner' | 'editor' | 'viewer' | undefined,
-        });
+        if (
+          command === 'bootstrap-rotate' &&
+          (flags.has('--workspace') || flags.has('--role'))
+        )
+          throw new Error('Bootstrap rotation accepts only --email.');
+        const invitation =
+          command === 'bootstrap-rotate'
+            ? await rotateBootstrapInvitation(pool, email)
+            : await issueInvitation(pool, email, {
+                bootstrap: command === 'bootstrap',
+                workspaceId: flags.get('--workspace'),
+                role: role as 'owner' | 'editor' | 'viewer' | undefined,
+              });
         const link = new URL('/invite', config.url);
         link.searchParams.set('token', invitation.token);
         link.searchParams.set('email', invitation.email);

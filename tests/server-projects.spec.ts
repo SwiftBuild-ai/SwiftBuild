@@ -358,3 +358,88 @@ test('viewer edits remain local while the server rejects writes', async ({
     }),
   ).toHaveCount(0);
 });
+test('engineering jobs survive reload and export/import through the workbench', async ({
+  page,
+  context,
+}, info) => {
+  test.skip(
+    !process.env.SWIFTBUILD_BROWSER_COMPUTATION,
+    'Configure Python for complete computation browser verification.',
+  );
+  await page.goto('/login');
+  await page
+    .getByLabel('Email', { exact: true })
+    .fill(process.env.SWIFTBUILD_BROWSER_EMAIL!);
+  await page
+    .getByLabel('Password', { exact: true })
+    .fill('swiftbuild-browser-test-password!');
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await page.waitForURL('**/account');
+  const workspaces = await (
+    await context.request.get('/api/v1/workspaces')
+  ).json();
+  const p = await context.request.post('/api/v1/projects', {
+    headers: { origin: 'http://localhost:3200' },
+    data: {
+      workspaceId: workspaces.items[0].id,
+      operationId: randomUUID(),
+      archive: workspaceFor(sampleDocument()),
+    },
+  });
+  expect(p.status()).toBe(201);
+  const project = await p.json();
+  await page.goto('/projects/' + project.id);
+  await page
+    .getByRole('button', { name: 'Engineering analysis', exact: true })
+    .click();
+  await page.getByRole('checkbox', { name: /Web application/ }).check();
+  await page.getByLabel('Mean operating time (seconds)').fill('80');
+  await page.getByLabel('Mean repair time (seconds)').fill('20');
+  await page.getByLabel('Evidence source').fill('Browser reference');
+  await page
+    .getByLabel('Model context and assumptions')
+    .fill('Explicit stationary test inputs.');
+  await page
+    .getByRole('button', { name: 'Submit saved revision 1', exact: true })
+    .click();
+  await page.reload();
+  await page
+    .getByRole('button', { name: 'Engineering analysis', exact: true })
+    .click();
+  await expect(page.getByText(/availability 0.8/)).toBeVisible({
+    timeout: 30000,
+  });
+  const downloaded = page.waitForEvent('download');
+  await page
+    .getByRole('button', { name: 'Export analysis bundle', exact: true })
+    .click();
+  const bundle = await downloaded;
+  const body = JSON.parse(await readFile((await bundle.path())!, 'utf8'));
+  expect(body.report.availability).toBeCloseTo(0.8, 12);
+  await page.getByLabel('Import historical analysis bundle').setInputFiles({
+    name: 'analysis.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(body)),
+  });
+  await expect(page.getByText('completed · Historical import')).toBeVisible();
+  await page
+    .getByRole('button', { name: 'Submit saved revision 1', exact: true })
+    .focus();
+  await expect(
+    page.getByRole('button', { name: 'Submit saved revision 1', exact: true }),
+  ).toBeFocused();
+  await page.screenshot({
+    path: info.outputPath('server-engineering-analysis-dark.png'),
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({
+    path: info.outputPath('server-engineering-analysis-narrow.png'),
+    fullPage: true,
+  });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+});

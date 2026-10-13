@@ -2,9 +2,14 @@ FROM node:24-alpine AS build
 WORKDIR /app
 RUN npm install -g pnpm@10.28.1
 COPY . .
-RUN pnpm install --frozen-lockfile
-ENV NEXT_TELEMETRY_DISABLED=1
+RUN --mount=type=cache,id=swiftbuild-pnpm,target=/pnpm/store pnpm install --frozen-lockfile --store-dir /pnpm/store
+ENV NEXT_TELEMETRY_DISABLED=1 TURBO_TELEMETRY_DISABLED=1
 RUN pnpm build
+
+FROM build AS operations
+RUN apk add --no-cache postgresql-client
+USER node
+CMD ["pnpm", "computation:worker"]
 
 FROM node:24-alpine AS runtime
 WORKDIR /app

@@ -8,6 +8,9 @@
   },
   "scripts": {
     "dev": "pnpm dev:web",
+    "computation:generate": "pnpm --filter @swiftbuild/computation-contracts generate",
+    "computation:check": "pnpm --filter @swiftbuild/computation-contracts generate --check",
+    "computation:worker": "pnpm --filter @swiftbuild/server-core worker",
     "dev:web": "pnpm --filter @swiftbuild/web dev",
     "build": "turbo run build",
     "lint": "eslint . && pnpm boundaries",

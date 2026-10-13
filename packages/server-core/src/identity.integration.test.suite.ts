@@ -57,7 +57,7 @@ describe.skipIf(!url)(
     });
     beforeEach(async () => {
       await pool.query(
-        'TRUNCATE sb_auth_users, sb_auth_sessions, sb_auth_accounts, sb_auth_verifications, sb_auth_limits, sb_admitted_users, sb_invitations, sb_instance, sb_workspaces, sb_members, sb_projects, sb_revisions, sb_audit_events',
+        'TRUNCATE sb_jobs, sb_job_attempts, sb_worker_heartbeats, sb_auth_users, sb_auth_sessions, sb_auth_accounts, sb_auth_verifications, sb_auth_limits, sb_admitted_users, sb_invitations, sb_instance, sb_workspaces, sb_members, sb_projects, sb_revisions, sb_audit_events',
       );
       identity = createIdentity(pool, config);
     });

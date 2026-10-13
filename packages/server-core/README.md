@@ -8,7 +8,7 @@ Saves atomically insert an immutable numbered revision and audit event and updat
 
 Integration tests use a real database supplied by `SWIFTBUILD_TEST_DATABASE_URL`; its database name must end in `_test`. Tests create and remove only a unique generated schema. Without that variable, database tests are explicitly skipped, not simulated or reported as verified. CI supplies an isolated database. Run `pnpm exec vitest run packages/server-core/src/server.integration.test.ts` with the test connection configured.
 
-This foundation is not a finished operational server product. The web host implements account/project screens, revision-checked editing, history export, explicit complete saved-draft promotion and local recovery. Full deployment, least-privilege provisioning, backup/restore and remaining milestone 1 gates are unfinished. Mail will be optional; the default operator workflow uses one-time links. Existing browser-local work remains available.
+This foundation is not a finished operational server product. The web host implements account/project screens, revision-checked editing, history export, explicit complete saved-draft promotion and local recovery. Optional full-server deployment, runtime-role provisioning and a backup/restore smoke workflow are described in the [computation deployment guide](../../docs/self-hosting/computation.md). Project-creation retry recovery across reload, revision restoration and bootstrap rotation remain unfinished. Mail will be optional; the default operator workflow uses one-time links. Existing browser-local work remains available.
 
 Project, workspace and revision metadata lists return at most 100 entries per page. The HTTP API exposes cursors for complete traversal and preserves timestamp precision; see [pagination contracts](../../docs/server-api.md) and the [storage decision](../../docs/adr/0007-server-project-storage.md).
 
@@ -34,3 +34,7 @@ Tests exercise real local account creation, sessions, role admission and passwor
 Database suites share one sequential runner so schema introspection cannot race another fixture cleanup. Transactional concurrency tests still issue competing requests concurrently. Core unit files retain their parallel execution.
 
 The authenticated HTTP boundary requires same-origin mutations, validates bounded UTF-8 JSON, derives actor identity only from the session, checks active admission together with membership during storage transactions, and returns no-store responses with request IDs. Metadata cursors retain full timestamp precision. See [server API](../../docs/server-api.md).
+
+## Engineering jobs
+
+`createJobStore(pool)` owns authorized revision-linked submissions, idempotency, queue admission, attempt leases, fencing, cancellation and historical bundle storage. `pnpm computation:worker` runs the separate TypeScript dispatcher. Reliability computation runs in a private FastAPI supervisor; capacity sweeps call the existing TypeScript engine in a bounded child process. Python has no database credentials or architecture model ownership. See [contracts](../../docs/server-api.md), [models](../../docs/engineering/analysis.md) and [ADR 0009](../../docs/adr/0009-engineering-computation-service.md).

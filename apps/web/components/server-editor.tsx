@@ -17,6 +17,7 @@ import {
 } from '../client/server-workspace';
 import { api, createProject, downloadArchive } from '../client/project-api';
 import { AccountShell } from './account-shell';
+import { analysisAdapter } from '../client/analysis-api';
 type Revision = { revision: number; createdAt: string; actorId: string };
 export function ServerEditor({
   project,
@@ -38,6 +39,14 @@ export function ServerEditor({
     [busy, setBusy] = useState(false),
     [dirty, setDirty] = useState(false),
     [revision, setRevision] = useState(project.revision);
+  const [analysis] = useState(() =>
+    analysisAdapter(
+      project.id,
+      () => adapter.confirmedRevision,
+      project.role !== 'viewer',
+      userId,
+    ),
+  );
   const latest = useRef(project.archive),
     confirmed = useRef(project.archive),
     copyOperation = useRef(crypto.randomUUID());
@@ -214,6 +223,8 @@ export function ServerEditor({
         </div>
       )}
       <Workbench
+        analysis={analysis}
+        analysisDirty={dirty}
         initialArchive={project.archive}
         storage={storage}
         onArchiveChange={onArchiveChange}

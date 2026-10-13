@@ -70,6 +70,25 @@
   color: var(--muted);
   font: 11px var(--font-mono);
 }
+.analysis-form label {
+  display: grid;
+  gap: 7px;
+  margin-block: 10px;
+}
+.analysis-form input:not([type='checkbox']),
+.analysis-form select,
+.analysis-form textarea {
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 12px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.analysis-form textarea {
+  resize: vertical;
+}
 .engineering-content {
   overflow: auto;
   padding: 28px 32px 80px;

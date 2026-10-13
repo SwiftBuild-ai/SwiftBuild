@@ -60,7 +60,7 @@ describe.skipIf(!url)(
         'INSERT INTO sb_admitted_users (user_id) SELECT id FROM sb_auth_users ON CONFLICT (user_id) DO UPDATE SET active=true',
       );
       await pool.query(
-        'TRUNCATE sb_audit_events, sb_revisions, sb_projects, sb_members, sb_invitations, sb_workspaces',
+        'TRUNCATE sb_jobs, sb_job_attempts, sb_worker_heartbeats, sb_audit_events, sb_revisions, sb_projects, sb_members, sb_invitations, sb_workspaces',
       );
     });
 

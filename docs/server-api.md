@@ -1,5 +1,19 @@
 # SwiftBuild server API
 
+## Engineering computation jobs
+
+All job routes live under `/api/v1/projects/PROJECT_ID/jobs`. They use the existing session, same-origin mutation, no-store and request-ID policies. Owners/editors submit/cancel/import; viewers read/export. Absent or cross-workspace membership is hidden as not found. Backend actors never come from payloads.
+
+- `POST /jobs`: strong `If-Match` current revision, `{operationId, input, imported?: false}`. Normal input is `{definition, seed?: 42, samples?: 10000, deadlineMs?: 120000}`. Returns the durable job with status 202. Repeated operation IDs return the same job; changed input is rejected. Stale revisions return 412.
+- `GET /jobs?before=JOB_ID`: newest-first metadata pages of at most 100 entries and `nextCursor`; full inputs/reports are fetched only through detail/export. `GET /jobs/JOB_ID` returns authorized detail.
+- `POST /jobs/JOB_ID/cancel`: accepts cancellation. Queued work cancels immediately; running work enters cancelling and cannot publish a later successful result.
+- `GET /jobs/JOB_ID/export`: versioned `swiftbuild-analysis` bundle with original execution inputs and report. Successful capacity bundles include TypeScript engine samples and their fingerprints.
+- `POST /jobs` with `{operationId, imported: true, input: BUNDLE}`: validates and stores a historical bundle for the same project and an existing referenced revision. `If-Match` still identifies the current project revision. Imports never enter the execution queue.
+
+Schemas live in `@swiftbuild/architecture-schema/analysis` and `@swiftbuild/computation-contracts`; committed JSON Schema generates Python types. Contract, bundle and numerical model versions are independent. Input/results are bounded to 8 MiB. Queue admission is limited to ten queued jobs per workspace and one active job per workspace.
+
+Private Python `/v1/executions` accepts a versioned input, canonical SHA-256 digest and attempt UUID. `/v1/executions/ATTEMPT_ID` accepts cancellation through DELETE. These endpoints require a private deployment bearer token and have no public route or database credentials. The dispatcher validates returned schemas and digests before transactional publication. See [model behavior](engineering/analysis.md) and [deployment](self-hosting/computation.md).
+
 Server mode is optional and requires private database/identity configuration and explicitly applied migrations. Browser-local work remains available. Authentication endpoints are exposed at `/api/auth`; local registration requires a valid invitation. Operator-issued links need no mail server.
 
 The `/login`, `/invite`, and `/reset-password` screens support password accounts, configured organizational sign-in, one-time invitation acceptance, and operator-issued password recovery. `/account` shows the admitted identity, links to projects and offers sign-out. Existing organizational accounts should sign in and then reopen an invitation to accept an additional workspace membership. Password recovery revokes existing sessions. Account pages request no indexing and no referrer transmission; credential fields remain disabled until client handlers are ready and native forms use POST.

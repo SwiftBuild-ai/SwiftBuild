@@ -15,3 +15,4 @@ export { identityConfig } from './config';
 
 export { connectBackend } from './backend';
 export { createApi, boundedJson, HttpError } from './http';
+export { createJobStore } from './jobs';

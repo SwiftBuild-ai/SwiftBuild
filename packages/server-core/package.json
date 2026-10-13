@@ -9,9 +9,14 @@
   "scripts": {
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
-    "cli": "tsx src/cli.ts"
+    "cli": "tsx src/cli.ts",
+    "worker": "node --v8-pool-size=2 --import tsx src/dispatcher.ts"
   },
   "dependencies": {
+    "@swiftbuild/computation-contracts": "workspace:*",
+    "@swiftbuild/architecture-schema": "workspace:*",
+    "@swiftbuild/capacity-engine": "workspace:*",
+    "@swiftbuild/graph-engine": "workspace:*",
     "@swiftbuild/project-format": "workspace:*",
     "better-auth": "1.7.7",
     "pg": "8.23.1",

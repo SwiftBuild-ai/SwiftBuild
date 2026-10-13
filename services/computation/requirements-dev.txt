@@ -1,0 +1,4 @@
+-r requirements.txt
+datamodel-code-generator==0.28.5
+pytest==8.3.5
+httpx==0.28.1

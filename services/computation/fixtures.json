@@ -1,0 +1,291 @@
+{
+  "canonical": [
+    {
+      "input": {
+        "unicode": "₹😀é",
+        "small": 1e-7,
+        "large": 1e21,
+        "zero": -0.0
+      },
+      "digest": "4299aabbcf57b6a2177e3ed3f629d5fb85517df5329434021b92b32441db1604"
+    },
+    {
+      "input": {
+        "contractVersion": "1.0",
+        "projectId": "00000000-0000-4000-8000-000000000001",
+        "revision": 1,
+        "definition": {
+          "kind": "reliability",
+          "reliability": {
+            "components": [
+              {
+                "nodeId": "n0",
+                "meanUpSeconds": 80,
+                "meanRepairSeconds": 20,
+                "provenance": {
+                  "kind": "assumed",
+                  "source": "Reference",
+                  "recordedAt": "2026-10-13T00:00:00Z",
+                  "context": "Numerical test",
+                  "limitations": ""
+                }
+              },
+              {
+                "nodeId": "n1",
+                "meanUpSeconds": 80,
+                "meanRepairSeconds": 20,
+                "provenance": {
+                  "kind": "assumed",
+                  "source": "Reference",
+                  "recordedAt": "2026-10-13T00:00:00Z",
+                  "context": "Numerical test",
+                  "limitations": ""
+                }
+              }
+            ],
+            "groups": [],
+            "gates": [
+              {
+                "id": "success",
+                "kind": "and",
+                "inputs": ["n0", "n1"]
+              }
+            ],
+            "root": "success"
+          },
+          "ranges": []
+        },
+        "seed": 42,
+        "samples": 1000,
+        "deadlineMs": 120000
+      },
+      "digest": "46eeb9682864ed31c9cd190c3da0e208042d17c36f5875bafe3c7a87f5a380ab"
+    },
+    {
+      "input": {
+        "😀": "non-BMP key",
+        "�": "BMP key",
+        "é": 1.25,
+        "nested": [0.0, 1e-8, 1e22]
+      },
+      "digest": "41491471f3b3386e757f99ab50b31ec25998522a2d35899dd92367ad0be4ef02"
+    }
+  ],
+  "accepted": [
+    {
+      "attemptId": "00000000-0000-4000-8000-000000000002",
+      "input": {
+        "contractVersion": "1.0",
+        "projectId": "00000000-0000-4000-8000-000000000001",
+        "revision": 1,
+        "definition": {
+          "kind": "reliability",
+          "reliability": {
+            "components": [
+              {
+                "nodeId": "n0",
+                "meanUpSeconds": 80,
+                "meanRepairSeconds": 20,
+                "provenance": {
+                  "kind": "assumed",
+                  "source": "Reference",
+                  "recordedAt": "2026-10-13T00:00:00Z",
+                  "context": "Numerical test",
+                  "limitations": ""
+                }
+              },
+              {
+                "nodeId": "n1",
+                "meanUpSeconds": 80,
+                "meanRepairSeconds": 20,
+                "provenance": {
+                  "kind": "assumed",
+                  "source": "Reference",
+                  "recordedAt": "2026-10-13T00:00:00Z",
+                  "context": "Numerical test",
+                  "limitations": ""
+                }
+              }
+            ],
+            "groups": [],
+            "gates": [
+              {
+                "id": "success",
+                "kind": "and",
+                "inputs": ["n0", "n1"]
+              }
+            ],
+            "root": "success"
+          },
+          "ranges": []
+        },
+        "seed": 42,
+        "samples": 1000,
+        "deadlineMs": 120000
+      },
+      "digest": "46eeb9682864ed31c9cd190c3da0e208042d17c36f5875bafe3c7a87f5a380ab"
+    }
+  ],
+  "rejected": [
+    {
+      "attemptId": "00000000-0000-4000-8000-000000000002",
+      "input": {
+        "contractVersion": "2.0",
+        "projectId": "00000000-0000-4000-8000-000000000001",
+        "revision": 1,
+        "definition": {
+          "kind": "reliability",
+          "reliability": {
+            "components": [
+              {
+                "nodeId": "n0",
+                "meanUpSeconds": 80,
+                "meanRepairSeconds": 20,
+                "provenance": {
+                  "kind": "assumed",
+                  "source": "Reference",
+                  "recordedAt": "2026-10-13T00:00:00Z",
+                  "context": "Numerical test",
+                  "limitations": ""
+                }
+              },
+              {
+                "nodeId": "n1",
+                "meanUpSeconds": 80,
+                "meanRepairSeconds": 20,
+                "provenance": {
+                  "kind": "assumed",
+                  "source": "Reference",
+                  "recordedAt": "2026-10-13T00:00:00Z",
+                  "context": "Numerical test",
+                  "limitations": ""
+                }
+              }
+            ],
+            "groups": [],
+            "gates": [
+              {
+                "id": "success",
+                "kind": "and",
+                "inputs": ["n0", "n1"]
+              }
+            ],
+            "root": "success"
+          },
+          "ranges": []
+        },
+        "seed": 42,
+        "samples": 1000,
+        "deadlineMs": 120000
+      },
+      "digest": "46eeb9682864ed31c9cd190c3da0e208042d17c36f5875bafe3c7a87f5a380ab"
+    },
+    {
+      "attemptId": "00000000-0000-4000-8000-000000000002",
+      "input": {
+        "contractVersion": "1.0",
+        "projectId": "00000000-0000-4000-8000-000000000001",
+        "revision": 1,
+        "definition": {
+          "kind": "reliability",
+          "reliability": {
+            "components": [
+              {
+                "nodeId": "n0",
+                "meanUpSeconds": 80,
+                "meanRepairSeconds": 20,
+                "provenance": {
+                  "kind": "assumed",
+                  "source": "Reference",
+                  "recordedAt": "2026-10-13T00:00:00Z",
+                  "context": "Numerical test",
+                  "limitations": ""
+                }
+              },
+              {
+                "nodeId": "n1",
+                "meanUpSeconds": 80,
+                "meanRepairSeconds": 20,
+                "provenance": {
+                  "kind": "assumed",
+                  "source": "Reference",
+                  "recordedAt": "2026-10-13T00:00:00Z",
+                  "context": "Numerical test",
+                  "limitations": ""
+                }
+              }
+            ],
+            "groups": [],
+            "gates": [
+              {
+                "id": "success",
+                "kind": "and",
+                "inputs": ["n0", "n1"]
+              }
+            ],
+            "root": "success"
+          },
+          "ranges": []
+        },
+        "seed": 42,
+        "samples": "1000",
+        "deadlineMs": 120000
+      },
+      "digest": "46eeb9682864ed31c9cd190c3da0e208042d17c36f5875bafe3c7a87f5a380ab"
+    },
+    {
+      "attemptId": "00000000-0000-4000-8000-000000000002",
+      "input": {
+        "contractVersion": "1.0",
+        "projectId": "00000000-0000-4000-8000-000000000001",
+        "revision": 1,
+        "definition": {
+          "kind": "reliability",
+          "reliability": {
+            "components": [
+              {
+                "nodeId": "n0",
+                "meanUpSeconds": 80,
+                "meanRepairSeconds": 20,
+                "provenance": {
+                  "kind": "assumed",
+                  "source": "Reference",
+                  "recordedAt": "2026-10-13T00:00:00Z",
+                  "context": "Numerical test",
+                  "limitations": ""
+                }
+              },
+              {
+                "nodeId": "n1",
+                "meanUpSeconds": 80,
+                "meanRepairSeconds": 20,
+                "provenance": {
+                  "kind": "assumed",
+                  "source": "Reference",
+                  "recordedAt": "2026-10-13T00:00:00Z",
+                  "context": "Numerical test",
+                  "limitations": ""
+                }
+              }
+            ],
+            "groups": [],
+            "gates": [
+              {
+                "id": "success",
+                "kind": "and",
+                "inputs": ["n0", "n1"]
+              }
+            ],
+            "root": "success"
+          },
+          "ranges": []
+        },
+        "seed": 42,
+        "samples": 1000,
+        "deadlineMs": 120000
+      },
+      "digest": "46eeb9682864ed31c9cd190c3da0e208042d17c36f5875bafe3c7a87f5a380ab",
+      "unexpected": true
+    }
+  ]
+}

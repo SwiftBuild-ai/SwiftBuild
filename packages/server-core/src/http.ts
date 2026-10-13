@@ -9,6 +9,8 @@ import {
 import { ProjectError, type createProjectStore } from './projects';
 import type { createIdentity } from './identity';
 import { migrations } from './migrate';
+import { createJobStore } from './jobs';
+import { MAX_COMPUTATION_BYTES } from '@swiftbuild/computation-contracts';
 export class HttpError extends Error {
   constructor(
     readonly status: number,
@@ -141,6 +143,17 @@ export function createApi(backend: {
             'MIGRATIONS_REQUIRED',
             'Apply the migrations for this server version.',
           );
+        if (process.env.SWIFTBUILD_COMPUTATION_ENABLED === '1') {
+          const workers = await backend.pool.query(
+            "SELECT 1 FROM sb_worker_heartbeats WHERE updated_at>now()-interval '30 seconds' LIMIT 1",
+          );
+          if (!workers.rowCount)
+            throw new HttpError(
+              503,
+              'WORKER_UNAVAILABLE',
+              'The computation dispatcher is unavailable.',
+            );
+        }
         return reply({ status: 'ready' });
       }
       const session = await backend.identity.session(request.headers);
@@ -243,6 +256,60 @@ export function createApi(backend: {
       }
       if (path[0] === 'projects' && path.length >= 2) {
         const projectId = uuid.parse(path[1]);
+        if (path[2] === 'jobs') {
+          const jobs = createJobStore(backend.pool);
+          if (path.length === 3 && request.method === 'POST') {
+            const body = z
+              .strictObject({
+                operationId: uuid,
+                input: z.unknown(),
+                imported: z.boolean().default(false),
+              })
+              .parse(await boundedJson(request, MAX_COMPUTATION_BYTES));
+            return reply(
+              await jobs.submit(
+                userId,
+                projectId,
+                expected(request),
+                body.operationId,
+                body.input,
+                body.imported,
+              ),
+              202,
+            );
+          }
+          if (path.length === 3 && request.method === 'GET') {
+            const items = await jobs.list(
+              userId,
+              projectId,
+              url.searchParams.get('before') ?? undefined,
+            );
+            return reply({
+              items,
+              nextCursor: items.length === 100 ? items.at(-1)!.id : null,
+            });
+          }
+          if (path.length === 4 && request.method === 'GET')
+            return reply(
+              await jobs.read(userId, projectId, uuid.parse(path[3])),
+            );
+          if (
+            path.length === 5 &&
+            path[4] === 'cancel' &&
+            request.method === 'POST'
+          ) {
+            await jobs.cancel(userId, projectId, uuid.parse(path[3]));
+            return reply({ status: 'accepted' });
+          }
+          if (
+            path.length === 5 &&
+            path[4] === 'export' &&
+            request.method === 'GET'
+          )
+            return reply(
+              await jobs.export(userId, projectId, uuid.parse(path[3])),
+            );
+        }
         if (path.length === 2 && request.method === 'GET') {
           const query = url.searchParams.get('revision');
           const project = await backend.projects.readProject(

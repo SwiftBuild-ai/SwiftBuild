@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { beforeAll, afterAll, beforeEach, describe, it, expect } from 'vitest';
-import { blankDocument } from '@swiftbuild/components-core';
+import { blankDocument, sampleDocument } from '@swiftbuild/components-core';
 import { workspaceFor } from '@swiftbuild/project-format';
 import {
   createIdentity,
@@ -98,7 +98,7 @@ describe.skipIf(!database)('authenticated project HTTP boundary', () => {
   });
   beforeEach(async () => {
     await pool.query(
-      'TRUNCATE sb_auth_users,sb_auth_sessions,sb_auth_accounts,sb_auth_verifications,sb_auth_limits,sb_admitted_users,sb_invitations,sb_instance,sb_workspaces,sb_members,sb_projects,sb_revisions,sb_audit_events',
+      'TRUNCATE sb_jobs,sb_job_attempts,sb_worker_heartbeats,sb_auth_users,sb_auth_sessions,sb_auth_accounts,sb_auth_verifications,sb_auth_limits,sb_admitted_users,sb_invitations,sb_instance,sb_workspaces,sb_members,sb_projects,sb_revisions,sb_audit_events',
     );
     rebuild();
     const invite = await issueInvitation(pool, 'owner@example.test', {
@@ -346,5 +346,69 @@ describe.skipIf(!database)('authenticated project HTTP boundary', () => {
         }),
       ),
     ).rejects.toMatchObject({ status: 400 });
+  });
+  it('authenticates engineering job endpoints and preserves idempotent submission and cancellation', async () => {
+    const d = sampleDocument();
+    const p = await (
+      await request('projects', 'POST', {
+        workspaceId,
+        operationId: randomUUID(),
+        archive: workspaceFor(d),
+      })
+    ).json();
+    const node = d.nodes[0]!.id;
+    const body = {
+      operationId: randomUUID(),
+      input: {
+        definition: {
+          kind: 'reliability',
+          reliability: {
+            components: [
+              {
+                nodeId: node,
+                meanUpSeconds: 80,
+                meanRepairSeconds: 20,
+                provenance: {
+                  kind: 'assumed',
+                  source: 'Reference',
+                  context: 'HTTP test',
+                  recordedAt: '2026-10-13T00:00:00Z',
+                },
+              },
+            ],
+            groups: [],
+            gates: [],
+            root: node,
+          },
+          ranges: [],
+        },
+      },
+    };
+    const path = `projects/${p.id}/jobs`;
+    expect((await request(path, 'POST', body, ownerCookie)).status).toBe(428);
+    expect(
+      (await request(path, 'POST', body, '', { 'if-match': '"1"' })).status,
+    ).toBe(401);
+    const response = await request(path, 'POST', body, ownerCookie, {
+      'if-match': '"1"',
+    });
+    expect(response.status).toBe(202);
+    const job = await response.json();
+    expect(
+      (
+        await (
+          await request(path, 'POST', body, ownerCookie, { 'if-match': '"1"' })
+        ).json()
+      ).id,
+    ).toBe(job.id);
+    expect(
+      (await (await request(`${path}/${job.id}/export`)).json()).format,
+    ).toBe('swiftbuild-analysis');
+    expect((await request(`${path}/${job.id}/cancel`, 'POST')).status).toBe(
+      200,
+    );
+    expect((await (await request(`${path}/${job.id}`)).json()).state).toBe(
+      'cancelled',
+    );
   });
 });

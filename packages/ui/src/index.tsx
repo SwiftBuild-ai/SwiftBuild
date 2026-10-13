@@ -171,12 +171,16 @@ export function Modal({
             const target = returnFocusRef?.current ?? opener.current;
             if (target?.isConnected && !target.closest('[inert]'))
               target.focus();
-            else
-              document
-                .querySelector<HTMLElement>(
-                  'main[tabindex="-1"], button:not(:disabled):not([inert] *)',
-                )
-                ?.focus();
+            else {
+              const fallback =
+                document.querySelector<HTMLElement>(
+                  'main[tabindex="-1"]:not([inert] *)',
+                ) ??
+                document.querySelector<HTMLElement>(
+                  'button:not(:disabled):not([inert] *)',
+                );
+              fallback?.focus();
+            }
           }}
         >
           <div className="modal-heading">

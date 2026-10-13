@@ -74,3 +74,11 @@ A distinct authenticated restoration endpoint appends complete attributed archiv
 ### 2026-10-13 — operator bootstrap-link rotation
 
 The operator CLI can replace a lost or expired bootstrap invitation before admission. Concurrent rotation and admission use the same lock order; every unused old link is revoked in the issuing transaction. Real database tests exercise repeated/concurrent rotation, expired/revoked links, admission races, post-enrollment refusal and private CLI delivery. No user-facing token issuance endpoint was added.
+
+## Foundation verification on October 13, 2026
+
+Implemented code through `728cef9` preserves the existing TypeScript semantic, validation and simulation engines and private Python computation boundary. Creation recovery, immutable restoration and bootstrap rotation were committed as separate verified slices. The final run of `pnpm verify` passed formatting, lint/boundaries, types, all 134 tests across 25 files (including real isolated-database suites with no skips), and the production build.
+
+Python verification passed 14 tests and both generated-schema/model drift checks. Browser-local verification passed all 22 local tests; its five server-only tests are intentionally run separately. The dedicated server suite passed all five tests, including committed creation response loss/reload/retry, revoked-workspace recovery/export, immutable restoration preview and keyboard confirmation, narrow layouts, restore response loss/reload/retry, intervening-writer preservation and the existing computation workflow. Fresh restoration captures were inspected and a narrow history layout defect was corrected.
+
+Default browser-local Docker startup and HTTP smoke passed. The optional full-server Docker deployment passed health/readiness, private computation execution, bundle export, database dump/restore, restored authorization, original creation/restoration operation replay without extra revisions, and numerical replay. Disposable deployments and test schemas are cleaned afterward. These checks demonstrate isolated local recovery; production retention, recovery objectives, deployed organizational sign-in, independent security review and full accessibility certification remain separate open gates. Milestones 1 and 6 remain in progress; the rest of the roadmap retains its dependency order.

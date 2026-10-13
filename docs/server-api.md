@@ -29,6 +29,7 @@ The `/login`, `/invite`, and `/reset-password` screens support password accounts
 | POST       | `/api/v1/invitations/accept`            | Accept a matching invitation while authenticated                        |
 | GET / POST | `/api/v1/projects`                      | List authorized workspace projects or create/import a validated archive |
 | GET / PUT  | `/api/v1/projects/PROJECT_ID`           | Read a snapshot or save a new revision                                  |
+| POST       | `/api/v1/projects/PROJECT_ID/restore`   | Restore a saved archive as a new immutable revision                     |
 | GET        | `/api/v1/projects/PROJECT_ID/revisions` | List immutable revision metadata                                        |
 | GET        | `/api/v1/projects/PROJECT_ID/export`    | Export a complete current archive                                       |
 

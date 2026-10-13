@@ -1,5 +1,13 @@
 # SwiftBuild current status
 
+## Annotated workbench controls on October 13, 2026
+
+Template selection now presents three separate purpose-labeled examples, document-derived component/connection counts, aligned actions and a replacement warning outside the cards. Engineering values remain illustrative. The canvas attribution badge is omitted through the adapter's supported option; the original dependency copyright/permission notice remains bundled in the web distribution.
+
+Design/Engineering is a personal detail preference: it changes declared capability visibility on canvas nodes and in the Configuration inspector, while all engineering destinations remain available in either mode. The setting survives reload without altering documents. Activity offers a confirmed Clear log action with cancel/Escape support and return focus; it clears only the current session's visible save messages. Documents, checkpoints, immutable revisions and server audit history remain intact, and subsequent saves create new entries.
+
+Final local verification passed `pnpm verify`: formatting, lint/boundaries, types, 104 non-database tests and production build. The full browser-local suite passed 31 tests; five server-only workflows were skipped. Regression coverage checks template containment at 390 and 870 pixels, distinct example purposes, omitted attribution, detail-mode capability visibility and reload persistence without document changes, and activity confirmation/cancellation/focus plus later saves. Fresh light/dark template captures and dark settings, engineering canvas and confirmation captures were inspected. The updated in-app preview was refreshed and its template dialog verified. The 38 database tests and dedicated server browser acceptance remain unverified without an isolated test database; Docker remains stopped.
+
 ## Workbench efficiency measurements on October 13, 2026
 
 The editor caches validation by immutable document/report inputs, reuses the evaluation fingerprint, preserves semantic graph data across selection changes, indexes selection and report lookups, and isolates viewport subscriptions in canvas controls. The shell subscribes to selection count and builds palette entries only when open. Persistence queues and edit-generation status remain intact. New regressions cover graph-reference preservation, UI navigation without another workspace write, semantic report invalidation/undo, removed dialog invokers, and four responsive widths in both themes with reduced motion.

@@ -264,6 +264,7 @@ const ArchitectureCard = memo(function ArchitectureCard({
   );
 });
 
+const canvasProOptions = { hideAttribution: true };
 const nodeTypes: NodeTypes = { semantic: ArchitectureCard };
 
 function orderedNodes(nodes: ArchitectureNode[]): ArchitectureNode[] {
@@ -478,6 +479,7 @@ export const GraphCanvas = memo(function GraphCanvas({
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
+        proOptions={canvasProOptions}
         fitView={document.nodes.length > 0}
         defaultViewport={{ x: 0, y: 0, zoom: 0.92 }}
         onInit={(instance) => {

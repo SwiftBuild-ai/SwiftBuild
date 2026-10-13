@@ -48,13 +48,8 @@ import {
   defaultComponents,
   searchComponents,
   loadPack,
-  infrastructureSampleDocument,
 } from '@swiftbuild/component-registry';
-import {
-  coreComponents,
-  sampleDocument,
-  engineeringSampleDocument,
-} from '@swiftbuild/components-core';
+import { coreComponents } from '@swiftbuild/components-core';
 import { graphIssues } from '@swiftbuild/graph-engine';
 import {
   serializeDocument,
@@ -89,6 +84,7 @@ import { recordCatalogUse } from './catalog-preferences';
 import { StoreContext, useEditor, GraphCanvas, Inspector } from './graph';
 import { importDocument, MAX_IMPORT_BYTES, DRAFT_KEY } from './storage';
 import { CommandPalette } from './command-palette';
+import { ArchitectureTemplates } from './architecture-templates';
 import type { WorkbenchCommand } from './commands';
 import type { AnalysisAdapter } from '@swiftbuild/computation-contracts';
 export type WorkbenchStorage = {
@@ -136,6 +132,9 @@ function Editor({
   const [validation, setValidation] = useState(false);
   const [newProject, setNewProject] = useState(false);
   const [engineering, setEngineering] = useState(false);
+  const [detailReady, setDetailReady] = useState(false);
+  const [clearLog, setClearLog] = useState(false);
+  const activityClose = useRef<HTMLButtonElement>(null);
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [themeReady, setThemeReady] = useState(false);
   const [componentDetails, setComponentDetails] =
@@ -308,6 +307,27 @@ function Editor({
     }
   }, [theme, themeReady]);
   useEffect(() => {
+    try {
+      setEngineering(
+        localStorage.getItem('swiftbuild.detail-mode') === 'engineering',
+      );
+    } catch {
+      /* The detail setting remains usable in memory. */
+    }
+    setDetailReady(true);
+  }, []);
+  useEffect(() => {
+    if (!detailReady) return;
+    try {
+      localStorage.setItem(
+        'swiftbuild.detail-mode',
+        engineering ? 'engineering' : 'design',
+      );
+    } catch {
+      /* Optional preferences do not block editing. */
+    }
+  }, [engineering, detailReady]);
+  useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
       if (target.closest('input,textarea,select,[contenteditable="true"]'))
@@ -344,6 +364,7 @@ function Editor({
         return;
       }
       if (
+        clearLog ||
         browser ||
         connectionDialog ||
         palette ||
@@ -397,6 +418,7 @@ function Editor({
     help,
     templates,
     custom,
+    clearLog,
     connectionDialog,
     section,
   ]);
@@ -1022,12 +1044,21 @@ function Editor({
             <section className="activity-panel" aria-label="Activity log">
               <div className="panel-heading">
                 <h2>Activity</h2>
-                <IconButton
-                  label="Close activity"
-                  onClick={() => setActivity(false)}
-                >
-                  <X size={16} />
-                </IconButton>
+                <div className="activity-actions">
+                  <Button
+                    disabled={!events.length}
+                    onClick={() => setClearLog(true)}
+                  >
+                    Clear log
+                  </Button>
+                  <IconButton
+                    ref={activityClose}
+                    label="Close activity"
+                    onClick={() => setActivity(false)}
+                  >
+                    <X size={16} />
+                  </IconButton>
+                </div>
               </div>
               <div className="activity-summary">
                 <Check size={14} />
@@ -1036,7 +1067,7 @@ function Editor({
                   Schema {document.schemaVersion}
                 </span>
               </div>
-              <div className="activity-events">
+              <div className="activity-events" aria-live="polite">
                 {events.length ? (
                   events.map((event, i) => (
                     <div className="activity-event" key={i}>
@@ -1045,10 +1076,7 @@ function Editor({
                     </div>
                   ))
                 ) : (
-                  <p>
-                    Your architecture changes will appear here as the draft is
-                    saved.
-                  </p>
+                  <p>No save activity to show. New saves will appear here.</p>
                 )}
               </div>
             </section>
@@ -1265,12 +1293,14 @@ function Editor({
           </Button>
         </div>
         <div className="settings-section">
-          <h3>Architecture detail</h3>
+          <h3>Canvas and inspector detail</h3>
           <p>
-            Design mode keeps the canvas clear. Engineering mode shows
-            capabilities.
+            Design shows component names and configuration. Engineering also
+            shows declared capabilities on canvas nodes and in the Configuration
+            inspector. Requirements, capacity analysis and other engineering
+            tools work in both modes.
           </p>
-          <div className="mode-switch" aria-label="Display mode">
+          <div className="mode-switch" role="group" aria-label="Display mode">
             <button
               aria-pressed={!engineering}
               className={!engineering ? 'active' : ''}
@@ -1286,6 +1316,11 @@ function Editor({
               Engineering
             </button>
           </div>
+          {!document.nodes.length && (
+            <p className="detail-mode-hint">
+              Add a component or choose a template to see the detail change.
+            </p>
+          )}
         </div>
         <div className="settings-section">
           <h3>{storage ? 'Project storage' : 'Local workspace'}</h3>
@@ -1332,73 +1367,49 @@ function Editor({
         </div>
       </Modal>
       <Modal
+        open={clearLog}
+        onOpenChange={setClearLog}
+        title="Clear activity log?"
+        description="Remove the visible save messages from this session? This does not delete your architecture, checkpoints, saved revisions or server audit history. New saves will appear again."
+        returnFocusRef={!events.length ? activityClose : undefined}
+      >
+        <div className="confirm-actions">
+          <Button onClick={() => setClearLog(false)}>Cancel</Button>
+          <Button
+            onClick={() => {
+              setEvents([]);
+              setClearLog(false);
+            }}
+          >
+            Clear log
+          </Button>
+        </div>
+      </Modal>
+      <Modal
         open={templates}
         onOpenChange={setTemplates}
         title="Architecture templates"
         description="Start with a meaningful system, then make it yours."
       >
-        <div className="template-preview">
-          <Network size={30} />
-          <h3>Commerce platform</h3>
-          <p>
-            A web client, stateless API, session cache, and durable database.
-            Includes compatible semantic connections and editable configuration.
-          </p>
-          <span>4 components · 3 connections</span>
-        </div>
-        <p className="template-warning">
-          Using this template replaces your current{' '}
-          {storage ? 'project' : 'browser draft'}. Export a copy first to keep
-          it.
-        </p>
-        <div className="confirm-actions">
-          <Button onClick={exportJSON}>Export current architecture</Button>
-          <Button
-            variant="primary"
-            onClick={() => {
-              replace(sampleDocument());
-              setSection(null);
+        {templates && (
+          <ArchitectureTemplates
+            server={!!storage}
+            onExport={exportJSON}
+            onChoose={(document, destination) => {
+              replace(document);
               setLocked(false);
               setTemplates(false);
               setInspector(false);
+              setSection(destination === 'capacity' ? 'capacity' : null);
+              if (destination === 'capacity') setSidebar(false);
+              else if (destination === 'catalog') {
+                setSidebar(true);
+                setPanel('components');
+              }
               setTimeout(() => flow.fitView({ padding: 0.2 }), 100);
             }}
-          >
-            Use template
-          </Button>
-          <Button
-            onClick={() => {
-              replace(engineeringSampleDocument());
-              setLocked(false);
-              setTemplates(false);
-              setInspector(false);
-              setSection('capacity');
-              setSidebar(false);
-              setTimeout(() => flow.fitView({ padding: 0.2 }), 100);
-            }}
-          >
-            Use engineering example
-          </Button>
-          <Button
-            onClick={() => {
-              replace(infrastructureSampleDocument());
-              setLocked(false);
-              setTemplates(false);
-              setSidebar(true);
-              setSection(null);
-              setPanel('components');
-              void flow.fitView({ padding: 0.2 });
-            }}
-          >
-            Use infrastructure example
-          </Button>
-
-          <p className="field-hint">
-            Includes a workload scenario, flow policies, linked requirements and
-            illustrative capacity profiles. Example values are not measured
-            performance.
-          </p>
-        </div>
+          />
+        )}
       </Modal>
       <Modal
         open={custom}

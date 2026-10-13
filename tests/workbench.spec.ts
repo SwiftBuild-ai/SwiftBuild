@@ -643,3 +643,136 @@ test('canvas locking prevents layout movement and logs show actual saved work', 
     page.getByRole('region', { name: 'Activity log' }),
   ).toContainText('Saved draft');
 });
+
+test('template choices have distinct purposes and fit the annotated viewport', async ({
+  page,
+}, info) => {
+  await ready(page, false);
+  for (const width of [870, 390]) {
+    await page.setViewportSize({ width, height: 764 });
+    await page
+      .getByRole('navigation', { name: 'Editor tools' })
+      .getByRole('button', { name: 'Architecture templates', exact: true })
+      .click();
+    const dialog = page.getByRole('dialog', {
+      name: 'Architecture templates',
+      exact: true,
+    });
+    await expect(dialog.getByRole('article')).toHaveCount(3);
+    await expect(
+      dialog.getByRole('article').filter({ hasText: 'Engineering example' }),
+    ).toContainText('not measured performance');
+    for (const article of await dialog.getByRole('article').all()) {
+      const bounds = await article.evaluate((element) => {
+        const box = element.getBoundingClientRect();
+        const button = element.querySelector('button')!.getBoundingClientRect();
+        const modal = element.closest('[role="dialog"]')!;
+        return {
+          left: box.left,
+          right: box.right,
+          buttonHeight: button.height,
+          overflow: modal.scrollWidth > modal.clientWidth,
+        };
+      });
+      expect(bounds.left).toBeGreaterThanOrEqual(0);
+      expect(bounds.right).toBeLessThanOrEqual(width);
+      expect(bounds.buttonHeight).toBeLessThan(70);
+      expect(bounds.overflow).toBe(false);
+    }
+    await page.screenshot({ path: info.outputPath(`templates-${width}.png`) });
+    await dialog.getByRole('button', { name: 'Close dialog' }).click();
+  }
+  await page
+    .getByRole('navigation', { name: 'Editor tools' })
+    .getByRole('button', { name: 'Architecture templates', exact: true })
+    .click();
+  await page
+    .getByRole('button', { name: 'Use infrastructure example', exact: true })
+    .click();
+  await expect
+    .poll(async () => (await stored(page)).nodes.length)
+    .toBeGreaterThan(0);
+  await expect(page.locator('.react-flow__attribution')).toHaveCount(0);
+});
+
+test('detail modes change capabilities without changing the architecture and survive reload', async ({
+  page,
+}) => {
+  await ready(page);
+  const before = await stored(page);
+  await page.getByRole('button', { name: 'Workspace settings' }).click();
+  const mode = page.getByRole('group', { name: 'Display mode' });
+  await expect(mode).toContainText('Design');
+  await mode
+    .getByRole('button', { name: 'Engineering', exact: true })
+    .press('Enter');
+  await expect(
+    mode.getByRole('button', { name: 'Engineering', exact: true }),
+  ).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: 'Close dialog' }).click();
+  await expect(page.locator('.node-engineering').first()).toBeVisible();
+  await selectObject(page, 'Storefront API');
+  await expect(
+    page
+      .getByRole('complementary', { name: 'Component inspector' })
+      .locator('.capabilities'),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Close inspector' }).click();
+  expect(await stored(page)).toEqual(before);
+  await page.reload();
+  await expect(page.getByRole('status')).toHaveText('Saved locally');
+  await expect(page.locator('.node-engineering').first()).toBeVisible();
+  await page.getByRole('button', { name: 'Workspace settings' }).click();
+  await mode.getByRole('button', { name: 'Design', exact: true }).click();
+  await page.getByRole('button', { name: 'Close dialog' }).click();
+  await expect(page.locator('.node-engineering')).toHaveCount(0);
+  await expect(page.locator('.react-flow__attribution')).toHaveCount(0);
+  expect(await stored(page)).toEqual(before);
+});
+
+test('activity clearing requires confirmation, preserves the draft and records later saves', async ({
+  page,
+}) => {
+  await ready(page);
+  const before = await stored(page);
+  await page.getByRole('button', { name: 'Logs', exact: true }).click();
+  const log = page.getByRole('region', { name: 'Activity log' });
+  await expect(log).toContainText('Saved draft');
+  const clear = log.getByRole('button', { name: 'Clear log', exact: true });
+  await clear.click();
+  const confirmation = page.getByRole('dialog', {
+    name: 'Clear activity log?',
+    exact: true,
+  });
+  await expect(confirmation).toContainText('session');
+  await confirmation
+    .getByRole('button', { name: 'Cancel', exact: true })
+    .click();
+  await expect(clear).toBeFocused();
+  await expect(log).toContainText('Saved draft');
+  await clear.click();
+  await page.keyboard.press('Escape');
+  await expect(confirmation).toHaveCount(0);
+  await expect(clear).toBeFocused();
+  await clear.click();
+  await confirmation
+    .getByRole('button', { name: 'Clear log', exact: true })
+    .click();
+  await expect(confirmation).toHaveCount(0);
+  await expect(log).toContainText('No save activity');
+  await expect(clear).toBeDisabled();
+  await expect(
+    log.getByRole('button', { name: 'Close activity' }),
+  ).toBeFocused();
+  expect(await stored(page)).toEqual(before);
+  await page
+    .getByLabel('Architecture name', { exact: true })
+    .fill('A new saved edit');
+  await page.getByLabel('Architecture name', { exact: true }).press('Enter');
+  await expect
+    .poll(async () => (await stored(page)).architecture.name)
+    .toBe('A new saved edit');
+  await expect(page.getByRole('status')).toHaveText('Saved locally');
+  await expect(log).toContainText('Saved draft');
+  await expect(clear).toBeEnabled();
+});

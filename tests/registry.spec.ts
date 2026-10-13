@@ -72,10 +72,10 @@ test('technology search, native drag insertion, configuration, connections and t
     .getByRole('button', { name: 'Command palette', exact: true })
     .click();
   await page
-    .getByRole('textbox', { name: 'Search commands' })
+    .getByRole('combobox', { name: 'Search commands' })
     .fill('Connect architecture');
   await page
-    .getByRole('button', {
+    .getByRole('option', {
       name: 'Connect architecture objects C',
       exact: true,
     })

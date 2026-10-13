@@ -1,5 +1,9 @@
 # SwiftBuild current status
 
+## Workbench command discovery on October 13, 2026
+
+The command palette now has independent search state, grouped ranked results, stable command identities, duplicate-name details and combobox keyboard navigation. Empty results are announced and empty shortcut badges are omitted. Local formatting, lint/boundaries, types, 103 non-database tests and production build passed; all 19 workbench/catalog browser tests passed. Database and dedicated server-browser verification remain unavailable without the isolated connection described below.
+
 ## Workbench keyboard and responsive improvements on October 13, 2026
 
 The workbench now remembers dialog invokers before child autofocus, retains destination focus during dialog handoffs, and supports explicit initial/return focus refs. Crossing the 760px breakpoint updates catalog visibility; narrow catalog dismissal is available through a labeled control and Escape with return focus. Existing persisted documents and recovery contracts are unchanged.

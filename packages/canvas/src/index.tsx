@@ -82,6 +82,8 @@ import { CatalogSidebar, ObjectSidebar } from './catalog';
 import { recordCatalogUse } from './catalog-preferences';
 import { StoreContext, useEditor, GraphCanvas, Inspector } from './graph';
 import { importDocument, MAX_IMPORT_BYTES, DRAFT_KEY } from './storage';
+import { CommandPalette } from './command-palette';
+import type { WorkbenchCommand } from './commands';
 import type { AnalysisAdapter } from '@swiftbuild/computation-contracts';
 export type WorkbenchStorage = {
   createAdapter: () => WorkspaceAdapter;
@@ -173,7 +175,6 @@ function Editor({
   const catalogSearch = useRef<HTMLInputElement>(null);
   const catalogTrigger = useRef<HTMLButtonElement>(null);
   const componentSearch = useRef<HTMLInputElement>(null);
-  const commandSearch = useRef<HTMLInputElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   useEffect(() => {
     if (hydrated) onArchiveChange?.({ ...workspace, document });
@@ -457,7 +458,8 @@ function Editor({
       record?.focus();
     }, 100);
   };
-  const commands = [
+  const commandEntries: (Omit<WorkbenchCommand, 'id' | 'group'> &
+    Partial<Pick<WorkbenchCommand, 'id' | 'group'>>)[] = [
     {
       name: 'Connect architecture objects',
       hint: 'C',
@@ -467,6 +469,12 @@ function Editor({
       },
     },
     ...definitions.map((definition) => ({
+      id: `component:${definition.id}`,
+      group: 'Components',
+      detail:
+        definitions.filter((c) => c.name === definition.name).length > 1
+          ? definition.id
+          : undefined,
       name: `Add ${definition.name}`,
       hint: '',
       run: () => {
@@ -475,6 +483,7 @@ function Editor({
       },
     })),
     ...engineeringSections.map((item) => ({
+      id: `section:${item.id}`,
       name: `Open ${item.label}`,
       hint: '',
       run: () => {
@@ -484,6 +493,9 @@ function Editor({
       },
     })),
     ...document.nodes.map((node) => ({
+      id: `object:${node.id}`,
+      group: 'Objects',
+      detail: node.id,
       name: `Object: ${node.name}`,
       hint: '',
       run: () => {
@@ -499,6 +511,8 @@ function Editor({
     })),
     ...[...document.requirements, ...document.nonFunctionalRequirements].map(
       (r) => ({
+        id: `requirement:${r.id}`,
+        group: 'Engineering records',
         name: `Requirement: ${r.title}`,
         hint: '',
         run: () => {
@@ -507,6 +521,8 @@ function Editor({
       }),
     ),
     ...document.decisions.map((d) => ({
+      id: `decision:${d.id}`,
+      group: 'Engineering records',
       name: `Decision: ${d.title}`,
       hint: '',
       run: () => {
@@ -514,6 +530,8 @@ function Editor({
       },
     })),
     ...engineeringValidation.findings.map((finding) => ({
+      id: `finding:${finding.id}`,
+      group: 'Engineering records',
       name: `Finding: ${finding.title}`,
       hint: finding.severity,
       run: () => openRecord('validation', `finding-${finding.id}`),
@@ -552,6 +570,11 @@ function Editor({
       },
     },
   ];
+  const commands: WorkbenchCommand[] = commandEntries.map((command) => ({
+    ...command,
+    id: command.id ?? `action:${command.name}`,
+    group: command.group ?? 'Actions',
+  }));
   const reportStale =
     !!currentReport &&
     (currentReport.fingerprint !== inputFingerprint(document) ||
@@ -1576,40 +1599,11 @@ function Editor({
           </span>
         </div>
       </Modal>
-      <Modal
+      <CommandPalette
         open={palette}
         onOpenChange={setPalette}
-        title="Command palette"
-        description="Find an action or use its keyboard shortcut."
-        initialFocusRef={commandSearch}
-      >
-        <div className="dialog-search">
-          <Search size={17} />
-          <input
-            ref={commandSearch}
-            aria-label="Search commands"
-            placeholder="What would you like to do?"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-        </div>
-        <div className="command-list">
-          {commands
-            .filter((c) => c.name.toLowerCase().includes(query.toLowerCase()))
-            .map((c) => (
-              <button
-                key={c.name}
-                onClick={() => {
-                  setPalette(false);
-                  c.run();
-                }}
-              >
-                <span>{c.name}</span>
-                <kbd>{c.hint}</kbd>
-              </button>
-            ))}
-        </div>
-      </Modal>
+        commands={commands}
+      />
       <Modal
         open={validation}
         onOpenChange={setValidation}

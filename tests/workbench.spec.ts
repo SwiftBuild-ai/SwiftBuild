@@ -239,7 +239,7 @@ test('narrow layout, modal focus and command palette', async ({
   await expect(page.getByLabel('Search commands')).toBeFocused();
   await page.getByLabel('Search commands').fill('add component');
   await page
-    .getByRole('button', { name: 'Add component A', exact: true })
+    .getByRole('option', { name: 'Add component A', exact: true })
     .click();
   await expect(
     page.getByRole('textbox', { name: 'Search components', exact: true }),
@@ -262,7 +262,7 @@ test('dialog dismissal restores its invoker and handoffs retain destination focu
   await page.keyboard.press('Control+k');
   await page.getByLabel('Search commands').fill('add component');
   await page
-    .getByRole('button', { name: 'Add component A', exact: true })
+    .getByRole('option', { name: 'Add component A', exact: true })
     .click();
   await expect(
     page.getByRole('textbox', { name: 'Search components', exact: true }),
@@ -274,6 +274,53 @@ test('dialog dismissal restores its invoker and handoffs retain destination focu
   await expect(
     page.getByRole('button', { name: 'Workspace settings' }),
   ).toBeFocused();
+});
+
+test('command palette supports ranked keyboard results and empty states', async ({
+  page,
+}) => {
+  await ready(page, false);
+  await page
+    .getByRole('button', { name: 'Command palette', exact: true })
+    .click();
+  const search = page.getByLabel('Search commands');
+  await expect(search).toHaveAttribute('role', 'combobox');
+  await expect(page.getByRole('option').first()).toContainText(
+    'Connect architecture objects',
+  );
+  await search.fill('add component');
+  await search.press('ArrowDown');
+  await expect(page.getByRole('option', { selected: true })).toContainText(
+    'Add component',
+  );
+  await search.press('Enter');
+  await expect(
+    page.getByRole('textbox', { name: 'Search components', exact: true }),
+  ).toBeFocused();
+  await page.keyboard.press('Escape');
+  await page
+    .getByRole('button', { name: 'Command palette', exact: true })
+    .click();
+  await search.fill('no-such-command');
+  await expect(
+    page.getByRole('status').filter({ hasText: 'No commands match' }),
+  ).toBeVisible();
+  await search.press('Enter');
+  await expect(
+    page.getByRole('dialog', { name: 'Command palette' }),
+  ).toBeVisible();
+  await search.fill('Add Load balancer');
+  await expect(page.getByRole('option')).toHaveCount(2);
+  await expect(page.getByRole('option').nth(0)).not.toHaveAttribute(
+    'id',
+    (await page.getByRole('option').nth(1).getAttribute('id')) ?? '',
+  );
+  await expect(page.getByRole('option').nth(0)).toContainText(
+    'generic.load-balancer',
+  );
+  await expect(page.getByRole('option').nth(1)).toContainText(
+    'core.load-balancer',
+  );
 });
 
 test('breakpoint changes dismiss the catalog and preserve deliberate toggles', async ({

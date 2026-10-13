@@ -13,6 +13,7 @@ import {
   Info,
   Star,
   Upload,
+  X,
 } from 'lucide-react';
 import { TechnologyIcon } from '@swiftbuild/ui';
 import type { ComponentDefinition } from '@swiftbuild/architecture-schema';
@@ -32,6 +33,7 @@ export function CatalogSidebar({
   onDetails,
   onPack,
   inputRef,
+  onDismiss,
 }: {
   definitions: ComponentDefinition[];
   onAdd: (c: ComponentDefinition) => void;
@@ -42,6 +44,7 @@ export function CatalogSidebar({
   onDetails: (c: ComponentDefinition) => void;
   onPack: () => void;
   inputRef: RefObject<HTMLInputElement | null>;
+  onDismiss: () => void;
 }) {
   const [query, setQuery] = useState(''),
     [expanded, setExpanded] = useState<string[]>([]),
@@ -143,7 +146,26 @@ export function CatalogSidebar({
     </div>
   );
   return (
-    <aside className="catalog-sidebar" aria-label="Component catalog">
+    <aside
+      className="catalog-sidebar"
+      aria-label="Component catalog"
+      onKeyDown={(event) => {
+        if (
+          event.key === 'Escape' &&
+          window.matchMedia('(max-width: 760px)').matches
+        ) {
+          event.stopPropagation();
+          onDismiss();
+        }
+      }}
+    >
+      <button
+        className="catalog-dismiss"
+        aria-label="Dismiss component catalog"
+        onClick={onDismiss}
+      >
+        <X size={16} /> Close catalog
+      </button>
       <div className="catalog-search">
         <Search size={18} />
         <input

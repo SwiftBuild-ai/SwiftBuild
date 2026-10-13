@@ -171,12 +171,14 @@ function Editor({
   const archiveInput = useRef<HTMLInputElement>(null);
   const [events, setEvents] = useState<{ time: string; message: string }[]>([]);
   const catalogSearch = useRef<HTMLInputElement>(null);
+  const catalogTrigger = useRef<HTMLButtonElement>(null);
+  const componentSearch = useRef<HTMLInputElement>(null);
+  const commandSearch = useRef<HTMLInputElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   useEffect(() => {
     if (hydrated) onArchiveChange?.({ ...workspace, document });
   }, [document, workspace, hydrated, onArchiveChange]);
   useEffect(() => {
-    setSidebar(window.innerWidth > 760);
     let active = true;
     const hydrate = async () => {
       try {
@@ -215,6 +217,13 @@ function Editor({
       active = false;
     };
   }, [replace, notify, storage, savedLabel]);
+  useEffect(() => {
+    const narrow = window.matchMedia('(max-width: 760px)');
+    const update = () => setSidebar(!narrow.matches);
+    update();
+    narrow.addEventListener('change', update);
+    return () => narrow.removeEventListener('change', update);
+  }, []);
   useEffect(() => {
     if (!hydrated || locked) return;
     const generation = ++saveGeneration.current;
@@ -673,6 +682,7 @@ function Editor({
             <Search size={19} />
           </IconButton>
           <IconButton
+            ref={catalogTrigger}
             label={
               sidebar && panel === 'components'
                 ? 'Hide component catalog'
@@ -685,6 +695,8 @@ function Editor({
               else {
                 setSidebar(true);
                 setPanel('components');
+                if (window.matchMedia('(max-width: 760px)').matches)
+                  setTimeout(() => catalogSearch.current?.focus(), 0);
               }
             }}
           >
@@ -748,11 +760,19 @@ function Editor({
                 setPalette(true);
               }}
               inputRef={catalogSearch}
+              onDismiss={() => {
+                setSidebar(false);
+                catalogTrigger.current?.focus();
+              }}
             />
           ) : (
             <ObjectSidebar onInspect={() => setInspector(true)} />
           ))}
-        <main className="canvas-main" aria-label="System architecture">
+        <main
+          className="canvas-main"
+          aria-label="System architecture"
+          tabIndex={-1}
+        >
           <div
             style={{
               height: '100%',
@@ -1507,11 +1527,12 @@ function Editor({
         onOpenChange={setBrowser}
         title="Build your architecture"
         description="Every component adds meaning to your system."
+        initialFocusRef={componentSearch}
       >
         <div className="dialog-search">
           <Search size={18} />
           <input
-            autoFocus
+            ref={componentSearch}
             placeholder="Search components…"
             aria-label="Search components"
             value={query}
@@ -1560,11 +1581,12 @@ function Editor({
         onOpenChange={setPalette}
         title="Command palette"
         description="Find an action or use its keyboard shortcut."
+        initialFocusRef={commandSearch}
       >
         <div className="dialog-search">
           <Search size={17} />
           <input
-            autoFocus
+            ref={commandSearch}
             aria-label="Search commands"
             placeholder="What would you like to do?"
             value={query}

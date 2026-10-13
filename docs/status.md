@@ -1,5 +1,11 @@
 # SwiftBuild current status
 
+## Workbench keyboard and responsive improvements on October 13, 2026
+
+The workbench now remembers dialog invokers before child autofocus, retains destination focus during dialog handoffs, and supports explicit initial/return focus refs. Crossing the 760px breakpoint updates catalog visibility; narrow catalog dismissal is available through a labeled control and Escape with return focus. Existing persisted documents and recovery contracts are unchanged.
+
+Local verification passed formatting, lint/boundaries, types, 101 non-database tests, production build and all 24 browser-local tests. The 38 database tests were skipped because no isolated test connection was configured; the five server browser workflows require their dedicated configuration and are not established by this run. An initial overlapping build/browser run failed with a Windows output lock and subsequent hydration failures; sequential verification and a fresh full browser run passed. Docker remains stopped.
+
 Implementation inventory updated October 13, 2026. Durable creation recovery, immutable restoration and bootstrap rotation are recorded in the foundation verification entries below. Server editor implementation was verified at `4992e59`, with database-backed browser verification at `7a617bc`. The server API foundation at `8603007`, account delivery and earlier October 11 documentation baseline at `20dc9ee` remain recorded below. This page distinguishes source-backed capabilities from dated execution results and does not certify production readiness.
 
 ## Capability inventory

@@ -248,6 +248,67 @@ test('narrow layout, modal focus and command palette', async ({
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toHaveCount(0);
 });
+test('dialog dismissal restores its invoker and handoffs retain destination focus', async ({
+  page,
+}) => {
+  await ready(page, false);
+  const trigger = page.getByRole('button', {
+    name: 'Command palette',
+    exact: true,
+  });
+  await trigger.click();
+  await page.getByLabel('Search commands').press('Escape');
+  await expect(trigger).toBeFocused();
+  await page.keyboard.press('Control+k');
+  await page.getByLabel('Search commands').fill('add component');
+  await page
+    .getByRole('button', { name: 'Add component A', exact: true })
+    .click();
+  await expect(
+    page.getByRole('textbox', { name: 'Search components', exact: true }),
+  ).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(trigger).toBeFocused();
+  await page.getByRole('button', { name: 'Workspace settings' }).click();
+  await page.getByRole('button', { name: 'Close dialog' }).click();
+  await expect(
+    page.getByRole('button', { name: 'Workspace settings' }),
+  ).toBeFocused();
+});
+
+test('breakpoint changes dismiss the catalog and preserve deliberate toggles', async ({
+  page,
+}) => {
+  await ready(page, false);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(
+    page.getByRole('complementary', { name: 'Component catalog' }),
+  ).toHaveCount(0);
+  const trigger = page.getByRole('button', {
+    name: 'Show component catalog',
+    exact: true,
+  });
+  await trigger.click();
+  await expect(page.getByLabel('Search component catalog')).toBeFocused();
+  await page.getByLabel('Search component catalog').press('Escape');
+  await expect(trigger).toBeFocused();
+  await page.setViewportSize({ width: 760, height: 844 });
+  await expect(
+    page.getByRole('complementary', { name: 'Component catalog' }),
+  ).toHaveCount(0);
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await expect(
+    page.getByRole('complementary', { name: 'Component catalog' }),
+  ).toBeVisible();
+  await page
+    .getByRole('button', { name: 'Hide component catalog', exact: true })
+    .click();
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await expect(
+    page.getByRole('complementary', { name: 'Component catalog' }),
+  ).toHaveCount(0);
+});
+
 test('100-node import remains interactive and searchable', async ({ page }) => {
   const doc = sampleDocument();
   const prototype = doc.nodes[1]!;

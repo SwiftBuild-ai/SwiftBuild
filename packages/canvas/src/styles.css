@@ -1552,6 +1552,22 @@
   }
 }
 /* Registry presentation uses structural tokens; technology colors live in design-tokens. */
+.catalog-dismiss {
+  display: none;
+}
+@media (max-width: 760px) {
+  .catalog-dismiss {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    padding: 10px 14px;
+    border: 0;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+  }
+}
 .registry-filters {
   display: flex;
   flex-wrap: wrap;

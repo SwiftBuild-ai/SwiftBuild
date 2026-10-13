@@ -1,6 +1,6 @@
 # Operator backup and recovery drills
 
-SwiftBuild provides private operator commands for binary-safe database backups, offline integrity verification and isolated restoration drills. This tooling has local boundary-test/build coverage; execution of the new database/container drill remains pending in the [verification record](../status.md). They do not switch a live deployment, delete databases, back up browser drafts, or establish production disaster recovery certification.
+SwiftBuild provides private operator commands for binary-safe database backups, offline integrity verification and isolated restoration drills. This tooling has local boundary-test/build coverage; the required hosted CI deployment smoke supplies database/container acceptance while local Docker remains stopped. See the [verification record](../status.md). They do not switch a live deployment, delete databases, back up browser drafts, or establish production disaster recovery certification.
 
 Use the PostgreSQL tools supplied by the full-server operations image, or install tools matching the recorded PostgreSQL major version. Set the private administrator `DATABASE_URL`. Backup tooling passes credentials through the subprocess environment rather than command arguments and uses a ten-minute timeout per PostgreSQL tool. Backups contain accounts, sessions and architecture data: keep the backup directory and identity configuration private.
 

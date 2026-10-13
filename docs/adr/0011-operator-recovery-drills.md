@@ -1,6 +1,6 @@
 # ADR 0011: Snapshot manifests and isolated operator recovery
 
-Status: accepted; container execution of this slice remains pending
+Status: accepted; database/container acceptance uses required hosted CI checks
 
 ## Decision
 

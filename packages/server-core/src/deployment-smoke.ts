@@ -185,7 +185,12 @@ try {
   let refused = false;
   try {
     await restoreDatabase(connection.toString(), backup, restore);
-  } catch {
+  } catch (error) {
+    if (
+      !(error instanceof Error) ||
+      !error.message.includes('Recovery target already exists')
+    )
+      throw error;
     refused = true;
   }
   if (!refused) throw new Error('Existing restore target was overwritten.');

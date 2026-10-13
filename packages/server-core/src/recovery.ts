@@ -151,8 +151,10 @@ export async function backupDatabase(
     connectionTimeoutMillis: 5000,
   });
   const client = await pool.connect();
+  let transactionOpen = false;
   try {
     await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
+    transactionOpen = true;
     const snapshotAt = new Date().toISOString();
     const snapshot = (await client.query('SELECT pg_export_snapshot() AS id'))
       .rows[0].id;
@@ -206,9 +208,10 @@ export async function backupDatabase(
     );
     await rename(join(root, 'manifest.tmp'), join(root, 'manifest.json'));
     await client.query('COMMIT');
+    transactionOpen = false;
     return manifest;
   } finally {
-    await client.query('ROLLBACK').catch(() => {});
+    if (transactionOpen) await client.query('ROLLBACK').catch(() => {});
     client.release();
     await pool.end();
   }
@@ -286,6 +289,16 @@ export async function restoreDatabase(
   }
   const restored = new URL(connection);
   restored.pathname = '/' + target;
+  const emptyTarget = new Pool({
+    connectionString: restored.toString(),
+    max: 1,
+  });
+  try {
+    // The full-schema archive recreates public. No CASCADE: unexpected contents stop recovery.
+    await emptyTarget.query('DROP SCHEMA public');
+  } finally {
+    await emptyTarget.end();
+  }
   await pgTool(
     'pg_restore',
     [
@@ -303,18 +316,21 @@ export async function restoreDatabase(
     max: 1,
   });
   const client = await restoredPool.connect();
+  let transactionOpen = false;
   try {
     await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
+    transactionOpen = true;
     const state = await inventory(client);
     if (tables.some((table) => state.rows[table] !== manifest.rows[table]))
       throw new Error(
         'Restored row inventory differs from the backup snapshot.',
       );
     await client.query('COMMIT');
+    transactionOpen = false;
     await client.query('ANALYZE');
     return { database: target, backupId: manifest.id, rows: state.rows };
   } finally {
-    await client.query('ROLLBACK').catch(() => {});
+    if (transactionOpen) await client.query('ROLLBACK').catch(() => {});
     client.release();
     await restoredPool.end();
   }

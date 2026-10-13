@@ -286,3 +286,43 @@ test('engineering panels reflow at narrow widths with reduced motion and dark th
     page.getByRole('button', { name: 'Add requirement' }),
   ).toBeFocused();
 });
+
+test('canvas results retain freshness through UI navigation and invalidate on semantic edits', async ({
+  page,
+}) => {
+  await seed(page);
+  await section(page, 'Capacity');
+  await page
+    .getByRole('button', { name: 'Run simulation', exact: true })
+    .click();
+  await expect(
+    page.getByRole('heading', { name: 'Simulation results', exact: true }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Canvas', exact: true }).click();
+  const summary = page.locator('.canvas-result-toggle');
+  await expect(summary).not.toContainText('Results stale');
+  await page
+    .getByRole('button', { name: 'Show capacity overlay', exact: true })
+    .click();
+  await expect(page.locator('.node-capacity').first()).toBeVisible();
+  await page.getByRole('button', { name: 'Workspace settings' }).click();
+  await page.getByRole('button', { name: 'Close dialog' }).click();
+  await expect(summary).not.toContainText('Results stale');
+  await section(page, 'Requirements');
+  await page.getByRole('button', { name: 'Add requirement' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Requirement', exact: true });
+  await dialog
+    .getByLabel('Title', { exact: true })
+    .fill('Updated architecture input');
+  await dialog
+    .getByLabel('Description', { exact: true })
+    .fill('A new goal changes the supplied simulation input.');
+  await dialog.getByRole('button', { name: 'Save requirement' }).click();
+  await expect(dialog).toHaveCount(0);
+  await page.getByRole('button', { name: 'Canvas', exact: true }).click();
+  await expect(summary).toContainText('Results stale');
+  await expect(page.locator('.node-capacity')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Undo', exact: true }).click();
+  await expect(summary).not.toContainText('Results stale');
+  await expect(page.locator('.node-capacity').first()).toBeVisible();
+});

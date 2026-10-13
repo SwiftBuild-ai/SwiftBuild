@@ -274,6 +274,14 @@ test('dialog dismissal restores its invoker and handoffs retain destination focu
   await expect(
     page.getByRole('button', { name: 'Workspace settings' }),
   ).toBeFocused();
+  await page.getByRole('button', { name: 'Utilities', exact: true }).click();
+  await page.getByLabel('Search commands').fill('Open Capacity');
+  await page
+    .getByRole('option', { name: 'Open Capacity', exact: true })
+    .click();
+  await expect(
+    page.getByRole('main', { name: 'System architecture' }),
+  ).toBeFocused();
 });
 
 test('command palette supports ranked keyboard results and empty states', async ({
@@ -354,6 +362,111 @@ test('breakpoint changes dismiss the catalog and preserve deliberate toggles', a
   await expect(
     page.getByRole('complementary', { name: 'Component catalog' }),
   ).toHaveCount(0);
+});
+
+test('UI navigation does not write another workspace revision', async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    const tracking = window as typeof window & { workspaceWrites?: number };
+    tracking.workspaceWrites = 0;
+    const put = IDBObjectStore.prototype.put;
+    IDBObjectStore.prototype.put = function (value, key) {
+      if (this.name === 'workspace')
+        tracking.workspaceWrites = (tracking.workspaceWrites ?? 0) + 1;
+      return put.call(this, value, key);
+    };
+  });
+  await ready(page);
+  const before = await stored(page);
+  const writes = await page.evaluate(
+    () =>
+      (window as typeof window & { workspaceWrites?: number }).workspaceWrites,
+  );
+  await selectObject(page, 'Storefront API');
+  await page.getByRole('button', { name: 'Close inspector' }).click();
+  await page
+    .getByRole('button', { name: 'Command palette', exact: true })
+    .click();
+  await page.getByLabel('Search commands').fill('fit');
+  await page.getByLabel('Search commands').press('Escape');
+  await page
+    .getByRole('button', { name: 'Zoom controls', exact: true })
+    .click();
+  await page.getByRole('button', { name: 'Zoom in', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Zoom controls', exact: true })
+    .click();
+  await page.getByRole('button', { name: 'Workspace settings' }).click();
+  await page.getByRole('button', { name: 'Close dialog' }).click();
+  // Observe a full autosave debounce interval after the last UI interaction.
+  await page.waitForTimeout(600);
+  expect(await stored(page)).toEqual(before);
+  expect(
+    await page.evaluate(
+      () =>
+        (window as typeof window & { workspaceWrites?: number })
+          .workspaceWrites,
+    ),
+  ).toBe(writes);
+});
+
+test('empty workbench and controls fit responsive viewports in both themes', async ({
+  page,
+}, info) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await ready(page, false);
+  for (const theme of ['light', 'dark']) {
+    if (theme === 'dark') {
+      await page.getByRole('button', { name: 'Workspace settings' }).click();
+      await page.getByRole('button', { name: 'Switch to dark theme' }).click();
+      await page.getByRole('button', { name: 'Close dialog' }).click();
+    }
+    for (const width of [390, 760, 1024, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      const bounds = await page.locator('.empty-canvas').evaluate((element) => {
+        const card = element.getBoundingClientRect();
+        const main = element.closest('main')!.getBoundingClientRect();
+        const controls = document
+          .querySelector('.canvas-controls')!
+          .getBoundingClientRect();
+        const logs = document
+          .querySelector('.editor-bottom-left')!
+          .getBoundingClientRect();
+        return {
+          card: {
+            left: card.left,
+            right: card.right,
+            top: card.top,
+            bottom: card.bottom,
+          },
+          main: {
+            left: main.left,
+            right: main.right,
+            top: main.top,
+            bottom: main.bottom,
+          },
+          controls: {
+            left: controls.left,
+            right: controls.right,
+            top: controls.top,
+          },
+          logs: { right: logs.right },
+          scrollWidth: document.documentElement.scrollWidth,
+        };
+      });
+      expect(bounds.card.left).toBeGreaterThanOrEqual(bounds.main.left);
+      expect(bounds.card.right).toBeLessThanOrEqual(bounds.main.right);
+      expect(bounds.card.top).toBeGreaterThanOrEqual(bounds.main.top);
+      expect(bounds.card.bottom).toBeLessThan(bounds.controls.top);
+      expect(bounds.logs.right).toBeLessThanOrEqual(bounds.controls.left);
+      expect(bounds.controls.right).toBeLessThanOrEqual(width);
+      expect(bounds.scrollWidth).toBe(width);
+      await page.screenshot({
+        path: info.outputPath(`empty-${theme}-${width}.png`),
+      });
+    }
+  }
 });
 
 test('100-node import remains interactive and searchable', async ({ page }) => {

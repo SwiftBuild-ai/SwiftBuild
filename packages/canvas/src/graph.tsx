@@ -63,6 +63,7 @@ import {
 
 export { StoreContext, useEditor } from './editor-context';
 import { useEditor } from './editor-context';
+import { projectSelection } from './graph-selection';
 export const categoryLabels = {
   client: 'Client',
   compute: 'Compute',
@@ -282,7 +283,7 @@ function orderedNodes(nodes: ArchitectureNode[]): ArchitectureNode[] {
   return result;
 }
 
-export function GraphCanvas({
+export const GraphCanvas = memo(function GraphCanvas({
   engineering,
   onInspector,
   onHelp,
@@ -300,9 +301,7 @@ export function GraphCanvas({
   const notify = useEditor((s) => s.notify);
   const addDefinition = useEditor((s) => s.add);
   const flow = useReactFlow();
-  const { zoom } = useViewport();
   const [canvasLocked, setCanvasLocked] = useState(false);
-  const [zoomMenu, setZoomMenu] = useState(false);
   const [minimap, setMinimap] = useState(false);
   const [explanation, setExplanation] = useState<Metric | null>(null);
   const [dragging, setDragging] = useState(false);
@@ -322,7 +321,12 @@ export function GraphCanvas({
     [document.components],
   );
 
-  const projected = useMemo(
+  const selectedIds = useMemo(() => new Set(selected), [selected]);
+  const reportNodes = useMemo(
+    () => new Map(report?.nodes.map((node) => [node.nodeId, node])),
+    [report],
+  );
+  const baseProjected = useMemo(
     () =>
       orderedNodes(document.nodes).map((node) => {
         const definition = definitions.get(node.componentId)!;
@@ -333,7 +337,7 @@ export function GraphCanvas({
           position: { x: layout.x, y: layout.y },
           parentId: node.parentId,
           extent: node.parentId ? ('parent' as const) : undefined,
-          selected: selected.includes(node.id),
+          selected: false,
           style:
             definition.category === 'boundary'
               ? { width: layout.width ?? 560, height: layout.height ?? 360 }
@@ -342,19 +346,24 @@ export function GraphCanvas({
             node,
             definition,
             engineering,
-            capacity: report?.nodes.find((n) => n.nodeId === node.id),
+            capacity: reportNodes.get(node.id),
             explainMetric: setExplanation,
           },
         };
       }),
-    [document, definitions, selected, engineering, report],
+    [document, definitions, engineering, reportNodes],
+  );
+
+  const projected = useMemo(
+    () => projectSelection(baseProjected, selectedIds),
+    [baseProjected, selectedIds],
   );
 
   const [nodes, setNodes] = useState<SemanticNode[]>(projected);
 
   useEffect(() => setNodes(projected), [projected]);
 
-  const projectedEdges = useMemo(
+  const baseEdges = useMemo(
     () =>
       document.edges.map((e) => ({
         id: e.id,
@@ -364,7 +373,7 @@ export function GraphCanvas({
         targetHandle: e.target.portId,
         label: e.label || e.relationship.replaceAll('-', ' '),
         type: 'smoothstep',
-        selected: selected.includes(e.id),
+        selected: false,
         style: { stroke: 'var(--subtle)', strokeWidth: 1.5 },
         labelStyle: {
           fill: 'var(--muted)',
@@ -375,7 +384,12 @@ export function GraphCanvas({
         labelBgPadding: [8, 5] as [number, number],
         labelBgBorderRadius: 4,
       })),
-    [document.edges, selected],
+    [document.edges],
+  );
+
+  const projectedEdges = useMemo(
+    () => projectSelection(baseEdges, selectedIds),
+    [baseEdges, selectedIds],
   );
 
   const [edges, setEdges] = useState<Edge[]>(projectedEdges);
@@ -552,72 +566,98 @@ export function GraphCanvas({
           Use the component catalog to start a new architecture.
         </p>
       )}
-      <div className="canvas-controls">
-        <Button aria-pressed={minimap} onClick={() => setMinimap((v) => !v)}>
-          Overview
-        </Button>
-        <IconButton
-          label={canvasLocked ? 'Unlock canvas' : 'Lock canvas'}
-          aria-pressed={canvasLocked}
-          onClick={() => setCanvasLocked((v) => !v)}
-        >
-          {canvasLocked ? <LockKeyhole size={19} /> : <Unlock size={19} />}
-        </IconButton>
-        <span className="control-divider" />
-        <button
-          className="zoom-trigger"
-          aria-label="Zoom controls"
-          aria-expanded={zoomMenu}
-          onClick={() => setZoomMenu((v) => !v)}
-        >
-          <span>{Math.round(zoom * 100)}%</span>
-          <ChevronDown size={16} />
-        </button>
-        <span className="control-divider" />
-        <IconButton label="Editor help" onClick={onHelp}>
-          <CircleHelp size={19} />
-        </IconButton>
-        {zoomMenu && (
-          <div className="zoom-popover" role="group" aria-label="Canvas zoom">
-            <Button onClick={() => flow.zoomIn()}>
-              <Plus size={16} />
-              Zoom in
-            </Button>
-            <Button onClick={() => flow.zoomOut()}>
-              <Minus size={16} />
-              Zoom out
-            </Button>
-            <Button
-              onClick={() => {
-                flow.fitView({
-                  padding: 0.2,
-                  duration: window.matchMedia(
-                    '(prefers-reduced-motion: reduce)',
-                  ).matches
-                    ? 0
-                    : 150,
-                });
-                setZoomMenu(false);
-              }}
-            >
-              <Maximize size={16} />
-              Fit architecture
-            </Button>
-            <Button
-              onClick={() => {
-                flow.zoomTo(1);
-                setZoomMenu(false);
-              }}
-            >
-              Reset to 100%
-            </Button>
-          </div>
-        )}
-      </div>
+      <CanvasControls
+        minimap={minimap}
+        onMinimap={() => setMinimap((v) => !v)}
+        canvasLocked={canvasLocked}
+        onLock={() => setCanvasLocked((v) => !v)}
+        onHelp={onHelp}
+      />
       <MetricExplanation
         metric={explanation}
         onClose={() => setExplanation(null)}
       />
+    </div>
+  );
+});
+
+function CanvasControls({
+  minimap,
+  onMinimap,
+  canvasLocked,
+  onLock,
+  onHelp,
+}: {
+  minimap: boolean;
+  onMinimap: () => void;
+  canvasLocked: boolean;
+  onLock: () => void;
+  onHelp: () => void;
+}) {
+  const flow = useReactFlow();
+  const { zoom } = useViewport();
+  const [zoomMenu, setZoomMenu] = useState(false);
+  return (
+    <div className="canvas-controls">
+      <Button aria-pressed={minimap} onClick={onMinimap}>
+        Overview
+      </Button>
+      <IconButton
+        label={canvasLocked ? 'Unlock canvas' : 'Lock canvas'}
+        aria-pressed={canvasLocked}
+        onClick={onLock}
+      >
+        {canvasLocked ? <LockKeyhole size={19} /> : <Unlock size={19} />}
+      </IconButton>
+      <span className="control-divider" />
+      <button
+        className="zoom-trigger"
+        aria-label="Zoom controls"
+        aria-expanded={zoomMenu}
+        onClick={() => setZoomMenu((v) => !v)}
+      >
+        <span>{Math.round(zoom * 100)}%</span>
+        <ChevronDown size={16} />
+      </button>
+      <span className="control-divider" />
+      <IconButton label="Editor help" onClick={onHelp}>
+        <CircleHelp size={19} />
+      </IconButton>
+      {zoomMenu && (
+        <div className="zoom-popover" role="group" aria-label="Canvas zoom">
+          <Button onClick={() => flow.zoomIn()}>
+            <Plus size={16} />
+            Zoom in
+          </Button>
+          <Button onClick={() => flow.zoomOut()}>
+            <Minus size={16} />
+            Zoom out
+          </Button>
+          <Button
+            onClick={() => {
+              flow.fitView({
+                padding: 0.2,
+                duration: window.matchMedia('(prefers-reduced-motion: reduce)')
+                  .matches
+                  ? 0
+                  : 150,
+              });
+              setZoomMenu(false);
+            }}
+          >
+            <Maximize size={16} />
+            Fit architecture
+          </Button>
+          <Button
+            onClick={() => {
+              flow.zoomTo(1);
+              setZoomMenu(false);
+            }}
+          >
+            Reset to 100%
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

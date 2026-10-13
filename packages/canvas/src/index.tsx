@@ -1,5 +1,12 @@
 'use client';
-import { useEffect, useRef, useState, type ChangeEvent } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  useMemo,
+  useCallback,
+  type ChangeEvent,
+} from 'react';
 import { ReactFlowProvider, useReactFlow } from '@xyflow/react';
 import {
   Braces,
@@ -72,7 +79,6 @@ import {
   type ProjectArchive,
   type WorkspaceAdapter,
 } from './workspace';
-import { inputFingerprint } from '@swiftbuild/architecture-model';
 import { evaluateArchitecture } from '@swiftbuild/rule-engine';
 import {
   ENGINE_VERSION,
@@ -108,7 +114,7 @@ function Editor({
   const savedLabel = storage?.savedLabel ?? 'Saved locally';
   const activityLabel = storage ? savedLabel : 'Saved draft';
   const document = useEditor((s) => s.history.present);
-  const selected = useEditor((s) => s.selected);
+  const selectionCount = useEditor((s) => s.selected.length);
   const past = useEditor((s) => s.history.past.length);
   const future = useEditor((s) => s.history.future.length);
   const message = useEditor((s) => s.message);
@@ -135,11 +141,22 @@ function Editor({
   const [componentDetails, setComponentDetails] =
     useState<ComponentDefinition | null>(null);
   const packInput = useRef<HTMLInputElement>(null);
-  const definitions = [
-    ...new Map(
-      [...defaultComponents, ...document.components].map((c) => [c.id, c]),
-    ).values(),
-  ];
+  const definitions = useMemo(
+    () => [
+      ...new Map(
+        [...defaultComponents, ...document.components].map((c) => [c.id, c]),
+      ).values(),
+    ],
+    [document.components],
+  );
+  const definitionNameCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const definition of definitions)
+      counts.set(definition.name, (counts.get(definition.name) ?? 0) + 1);
+    return counts;
+  }, [definitions]);
+  const openInspector = useCallback(() => setInspector(true), []);
+  const openHelp = useCallback(() => setHelp(true), []);
   const [query, setQuery] = useState('');
   const [hydrated, setHydrated] = useState(false);
   const [locked, setLocked] = useState(false);
@@ -443,11 +460,18 @@ function Editor({
     setInspector(true);
     return true;
   };
-  const filtered = searchComponents(definitions, query);
-  const issues = graphIssues(document);
-  const engineeringValidation = evaluateArchitecture(document, {
-    capacity: currentReport ?? undefined,
-  });
+  const filtered = useMemo(
+    () => searchComponents(definitions, query),
+    [definitions, query],
+  );
+  const issues = useMemo(() => graphIssues(document), [document]);
+  const engineeringValidation = useMemo(
+    () =>
+      evaluateArchitecture(document, {
+        capacity: currentReport ?? undefined,
+      }),
+    [document, currentReport],
+  );
   const openRecord = (destination: EngineeringSection, id: string) => {
     setSection(destination);
     setSidebar(false);
@@ -459,117 +483,124 @@ function Editor({
     }, 100);
   };
   const commandEntries: (Omit<WorkbenchCommand, 'id' | 'group'> &
-    Partial<Pick<WorkbenchCommand, 'id' | 'group'>>)[] = [
-    {
-      name: 'Connect architecture objects',
-      hint: 'C',
-      run: () => {
-        setSection(null);
-        setConnectionDialog(true);
-      },
-    },
-    ...definitions.map((definition) => ({
-      id: `component:${definition.id}`,
-      group: 'Components',
-      detail:
-        definitions.filter((c) => c.name === definition.name).length > 1
-          ? definition.id
-          : undefined,
-      name: `Add ${definition.name}`,
-      hint: '',
-      run: () => {
-        setSection(null);
-        addComponent(definition);
-      },
-    })),
-    ...engineeringSections.map((item) => ({
-      id: `section:${item.id}`,
-      name: `Open ${item.label}`,
-      hint: '',
-      run: () => {
-        setSection(item.id);
-        setSidebar(false);
-        setInspector(false);
-      },
-    })),
-    ...document.nodes.map((node) => ({
-      id: `object:${node.id}`,
-      group: 'Objects',
-      detail: node.id,
-      name: `Object: ${node.name}`,
-      hint: '',
-      run: () => {
-        setSection(null);
-        select([node.id]);
-        setInspector(true);
-        void flow.fitView({
-          nodes: [{ id: node.id }],
-          padding: 0.6,
-          maxZoom: 1,
-        });
-      },
-    })),
-    ...[...document.requirements, ...document.nonFunctionalRequirements].map(
-      (r) => ({
-        id: `requirement:${r.id}`,
-        group: 'Engineering records',
-        name: `Requirement: ${r.title}`,
-        hint: '',
-        run: () => {
-          openRecord('requirements', `requirement-${r.id}`);
+    Partial<Pick<WorkbenchCommand, 'id' | 'group'>>)[] = palette
+    ? [
+        {
+          name: 'Connect architecture objects',
+          hint: 'C',
+          run: () => {
+            setSection(null);
+            setConnectionDialog(true);
+          },
         },
-      }),
-    ),
-    ...document.decisions.map((d) => ({
-      id: `decision:${d.id}`,
-      group: 'Engineering records',
-      name: `Decision: ${d.title}`,
-      hint: '',
-      run: () => {
-        openRecord('decisions', `decision-${d.id}`);
-      },
-    })),
-    ...engineeringValidation.findings.map((finding) => ({
-      id: `finding:${finding.id}`,
-      group: 'Engineering records',
-      name: `Finding: ${finding.title}`,
-      hint: finding.severity,
-      run: () => openRecord('validation', `finding-${finding.id}`),
-    })),
-    {
-      name: 'Add component',
-      hint: 'A',
-      run: () => {
-        setQuery('');
-        setBrowser(true);
-      },
-    },
-    {
-      name: 'Fit architecture',
-      hint: 'F',
-      run: () => flow.fitView({ padding: 0.2 }),
-    },
-    { name: 'Undo', hint: 'Ctrl Z', run: undo },
-    { name: 'Redo', hint: 'Ctrl Shift Z', run: redo },
-    { name: 'Duplicate selection', hint: 'Ctrl D', run: duplicate },
-    { name: 'Delete selection', hint: 'Delete', run: remove },
-    { name: 'Export JSON', hint: '', run: exportJSON },
-    { name: 'Import JSON', hint: '', run: () => fileInput.current?.click() },
-    { name: 'New architecture', hint: '', run: () => setNewProject(true) },
-    {
-      name: 'Toggle theme',
-      hint: '',
-      run: () => setTheme((t) => (t === 'dark' ? 'light' : 'dark')),
-    },
-    {
-      name: 'Validate architecture',
-      hint: '',
-      run: () => {
-        setSection('validation');
-        setSidebar(false);
-      },
-    },
-  ];
+        ...definitions.map((definition) => ({
+          id: `component:${definition.id}`,
+          group: 'Components',
+          detail:
+            (definitionNameCounts.get(definition.name) ?? 0) > 1
+              ? definition.id
+              : undefined,
+          name: `Add ${definition.name}`,
+          hint: '',
+          run: () => {
+            setSection(null);
+            addComponent(definition);
+          },
+        })),
+        ...engineeringSections.map((item) => ({
+          id: `section:${item.id}`,
+          name: `Open ${item.label}`,
+          hint: '',
+          run: () => {
+            setSection(item.id);
+            setSidebar(false);
+            setInspector(false);
+          },
+        })),
+        ...document.nodes.map((node) => ({
+          id: `object:${node.id}`,
+          group: 'Objects',
+          detail: node.id,
+          name: `Object: ${node.name}`,
+          hint: '',
+          run: () => {
+            setSection(null);
+            select([node.id]);
+            setInspector(true);
+            void flow.fitView({
+              nodes: [{ id: node.id }],
+              padding: 0.6,
+              maxZoom: 1,
+            });
+          },
+        })),
+        ...[
+          ...document.requirements,
+          ...document.nonFunctionalRequirements,
+        ].map((r) => ({
+          id: `requirement:${r.id}`,
+          group: 'Engineering records',
+          name: `Requirement: ${r.title}`,
+          hint: '',
+          run: () => {
+            openRecord('requirements', `requirement-${r.id}`);
+          },
+        })),
+        ...document.decisions.map((d) => ({
+          id: `decision:${d.id}`,
+          group: 'Engineering records',
+          name: `Decision: ${d.title}`,
+          hint: '',
+          run: () => {
+            openRecord('decisions', `decision-${d.id}`);
+          },
+        })),
+        ...engineeringValidation.findings.map((finding) => ({
+          id: `finding:${finding.id}`,
+          group: 'Engineering records',
+          name: `Finding: ${finding.title}`,
+          hint: finding.severity,
+          run: () => openRecord('validation', `finding-${finding.id}`),
+        })),
+        {
+          name: 'Add component',
+          hint: 'A',
+          run: () => {
+            setQuery('');
+            setBrowser(true);
+          },
+        },
+        {
+          name: 'Fit architecture',
+          hint: 'F',
+          run: () => flow.fitView({ padding: 0.2 }),
+        },
+        { name: 'Undo', hint: 'Ctrl Z', run: undo },
+        { name: 'Redo', hint: 'Ctrl Shift Z', run: redo },
+        { name: 'Duplicate selection', hint: 'Ctrl D', run: duplicate },
+        { name: 'Delete selection', hint: 'Delete', run: remove },
+        { name: 'Export JSON', hint: '', run: exportJSON },
+        {
+          name: 'Import JSON',
+          hint: '',
+          run: () => fileInput.current?.click(),
+        },
+        { name: 'New architecture', hint: '', run: () => setNewProject(true) },
+        {
+          name: 'Toggle theme',
+          hint: '',
+          run: () => setTheme((t) => (t === 'dark' ? 'light' : 'dark')),
+        },
+        {
+          name: 'Validate architecture',
+          hint: '',
+          run: () => {
+            setSection('validation');
+            setSidebar(false);
+          },
+        },
+      ]
+    : [];
   const commands: WorkbenchCommand[] = commandEntries.map((command) => ({
     ...command,
     id: command.id ?? `action:${command.name}`,
@@ -577,7 +608,7 @@ function Editor({
   }));
   const reportStale =
     !!currentReport &&
-    (currentReport.fingerprint !== inputFingerprint(document) ||
+    (currentReport.fingerprint !== engineeringValidation.fingerprint ||
       currentReport.origin === 'imported' ||
       currentReport.engineVersion !== ENGINE_VERSION ||
       currentReport.modelVersion !== '1.0');
@@ -789,7 +820,7 @@ function Editor({
               }}
             />
           ) : (
-            <ObjectSidebar onInspect={() => setInspector(true)} />
+            <ObjectSidebar onInspect={openInspector} />
           ))}
         <main
           className="canvas-main"
@@ -811,8 +842,8 @@ function Editor({
                   ? (currentReport ?? undefined)
                   : undefined
               }
-              onInspector={() => setInspector(true)}
-              onHelp={() => setHelp(true)}
+              onInspector={openInspector}
+              onHelp={openHelp}
             />
           </div>
           <div className="editor-floating-actions" hidden={section !== null}>
@@ -1022,9 +1053,9 @@ function Editor({
               </div>
             </section>
           )}
-          {selected.length > 0 && section === null && (
+          {selectionCount > 0 && section === null && (
             <div className="selection-actions">
-              <span>{selected.length} selected</span>
+              <span>{selectionCount} selected</span>
               <IconButton label="Duplicate selection" onClick={duplicate}>
                 <Copy size={14} />
               </IconButton>

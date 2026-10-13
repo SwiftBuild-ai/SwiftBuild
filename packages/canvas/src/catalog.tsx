@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState, type RefObject } from 'react';
+import { useEffect, useState, useMemo, memo, type RefObject } from 'react';
 import {
   Search,
   ChevronRight,
@@ -321,11 +321,20 @@ export function CatalogSidebar({
     </aside>
   );
 }
-export function ObjectSidebar({ onInspect }: { onInspect: () => void }) {
+export const ObjectSidebar = memo(function ObjectSidebar({
+  onInspect,
+}: {
+  onInspect: () => void;
+}) {
   const document = useEditor((s) => s.history.present);
   const selected = useEditor((s) => s.selected);
   const select = useEditor((s) => s.select);
   const [query, setQuery] = useState('');
+  const selectedIds = useMemo(() => new Set(selected), [selected]);
+  const definitions = useMemo(
+    () => new Map(document.components.map((c) => [c.id, c])),
+    [document.components],
+  );
   return (
     <aside
       className="catalog-sidebar objects-sidebar"
@@ -348,14 +357,12 @@ export function ObjectSidebar({ onInspect }: { onInspect: () => void }) {
         {document.nodes
           .filter((n) => n.name.toLowerCase().includes(query.toLowerCase()))
           .map((node) => {
-            const definition = document.components.find(
-              (c) => c.id === node.componentId,
-            )!;
+            const definition = definitions.get(node.componentId)!;
 
             return (
               <button
                 key={node.id}
-                className={`object-item ${selected.includes(node.id) ? 'active' : ''}`}
+                className={`object-item ${selectedIds.has(node.id) ? 'active' : ''}`}
                 onClick={() => {
                   select([node.id]);
                   onInspect();
@@ -381,4 +388,4 @@ export function ObjectSidebar({ onInspect }: { onInspect: () => void }) {
       </div>
     </aside>
   );
-}
+});

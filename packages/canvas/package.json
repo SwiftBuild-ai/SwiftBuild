@@ -12,6 +12,7 @@
   },
   "name": "@swiftbuild/canvas",
   "dependencies": {
+    "@swiftbuild/computation-contracts": "workspace:*",
     "@swiftbuild/component-registry": "workspace:*",
     "@swiftbuild/architecture-model": "workspace:*",
     "@swiftbuild/architecture-schema": "workspace:*",

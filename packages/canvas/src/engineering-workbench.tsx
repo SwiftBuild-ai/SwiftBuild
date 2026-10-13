@@ -47,12 +47,20 @@ import {
   errorText,
 } from './engineering-forms';
 import type { ProjectArchive } from './workspace';
+import type { AnalysisAdapter } from '@swiftbuild/computation-contracts';
+import { AnalysisPanel } from './analysis-panel';
 
 export type EngineeringSection =
-  'requirements' | 'capacity' | 'decisions' | 'validation' | 'history';
+  | 'requirements'
+  | 'capacity'
+  | 'analysis'
+  | 'decisions'
+  | 'validation'
+  | 'history';
 export const engineeringSections = [
   { id: 'requirements', label: 'Requirements', icon: ListChecks },
   { id: 'capacity', label: 'Capacity', icon: Gauge },
+  { id: 'analysis', label: 'Engineering analysis', icon: Gauge },
   { id: 'decisions', label: 'Decisions', icon: NotebookPen },
   { id: 'validation', label: 'Validation', icon: FileCheck2 },
   { id: 'history', label: 'History', icon: History },
@@ -125,6 +133,8 @@ function RunChart({ report }: { report: CapacityReport }) {
   );
 }
 export function EngineeringWorkbench({
+  analysis,
+  analysisDirty,
   section,
   onClose,
   workspace,
@@ -133,6 +143,8 @@ export function EngineeringWorkbench({
   onReport,
   saveStatus,
 }: {
+  analysis?: AnalysisAdapter;
+  analysisDirty?: boolean;
   section: EngineeringSection;
   onClose: () => void;
   workspace: ProjectArchive;
@@ -285,6 +297,13 @@ export function EngineeringWorkbench({
         </div>
       </header>
       <div className="engineering-content">
+        {section === 'analysis' && (
+          <AnalysisPanel
+            adapter={analysis}
+            document={document}
+            dirty={analysisDirty}
+          />
+        )}
         {section === 'requirements' && (
           <>
             <div className="section-intro">

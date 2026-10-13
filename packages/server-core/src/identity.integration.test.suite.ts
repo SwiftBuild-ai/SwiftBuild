@@ -1,9 +1,14 @@
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import { createRequire } from 'node:module';
+import { pathToFileURL, fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { beforeAll, afterAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   createIdentity,
   issueInvitation,
+  rotateBootstrapInvitation,
   migrate,
   createProjectStore,
 } from './index';
@@ -57,7 +62,7 @@ describe.skipIf(!url)(
     });
     beforeEach(async () => {
       await pool.query(
-        'TRUNCATE sb_auth_users, sb_auth_sessions, sb_auth_accounts, sb_auth_verifications, sb_auth_limits, sb_admitted_users, sb_invitations, sb_instance, sb_workspaces, sb_members, sb_projects, sb_revisions, sb_audit_events',
+        'TRUNCATE sb_jobs, sb_job_attempts, sb_worker_heartbeats, sb_auth_users, sb_auth_sessions, sb_auth_accounts, sb_auth_verifications, sb_auth_limits, sb_admitted_users, sb_invitations, sb_instance, sb_workspaces, sb_members, sb_projects, sb_revisions, sb_audit_events',
       );
       identity = createIdentity(pool, config);
     });
@@ -89,6 +94,160 @@ describe.skipIf(!url)(
       expect(loggedIn.status).toBe(200);
       return { invite, headers: new Headers({ cookie: cookies(loggedIn) }) };
     }
+    it('delivers a replacement only through the private operator CLI', async () => {
+      const original = await issueInvitation(pool, 'owner@example.test', {
+        bootstrap: true,
+      });
+      const database = new URL(url!);
+      database.searchParams.set('options', `-c search_path=${schema}`);
+      const result = await promisify(execFile)(
+        process.execPath,
+        [
+          '--import',
+          pathToFileURL(createRequire(import.meta.url).resolve('tsx')).href,
+          fileURLToPath(new URL('./cli.ts', import.meta.url)),
+          'bootstrap-rotate',
+          '--email',
+          original.email,
+        ],
+        {
+          env: {
+            ...process.env,
+            DATABASE_URL: database.toString(),
+            SWIFTBUILD_URL: base,
+            SWIFTBUILD_AUTH_SECRET: config.secret,
+            SWIFTBUILD_ALLOW_LOCAL_HTTP: '1',
+          },
+        },
+      );
+      const link = new URL(result.stdout.trim());
+      expect(link.origin).toBe(base);
+      expect(link.pathname).toBe('/invite');
+      expect(link.searchParams.get('email')).toBe(original.email);
+      expect(link.searchParams.get('token')).toHaveLength(43);
+      expect(result.stderr).toBe('');
+      expect((await signup(original.email, original.token)).status).toBe(403);
+      expect(
+        (await signup(original.email, link.searchParams.get('token')!)).status,
+      ).toBe(200);
+    });
+    it('rotates expired or lost bootstrap links and refuses rotation after consumption', async () => {
+      await expect(
+        rotateBootstrapInvitation(pool, 'owner@example.test'),
+      ).rejects.toThrow('initial bootstrap');
+      const original = await issueInvitation(pool, 'owner@example.test', {
+        bootstrap: true,
+      });
+      await pool.query(
+        "UPDATE sb_invitations SET expires_at=now()-interval '1 second' WHERE id=$1",
+        [original.id],
+      );
+      const replacement = await rotateBootstrapInvitation(pool, original.email);
+      const newest = await rotateBootstrapInvitation(pool, original.email);
+      expect((await signup(original.email, original.token)).status).toBe(403);
+      expect((await signup(replacement.email, replacement.token)).status).toBe(
+        403,
+      );
+      expect((await signup(newest.email, newest.token)).status).toBe(200);
+      expect(
+        (
+          await pool.query(
+            'SELECT user_id FROM sb_admitted_users WHERE administrator',
+          )
+        ).rowCount,
+      ).toBe(1);
+      await pool.query(
+        'UPDATE sb_admitted_users SET active=false,administrator=false',
+      );
+      await expect(
+        rotateBootstrapInvitation(pool, 'other@example.test'),
+      ).rejects.toThrow('admission is complete');
+      const stored = (
+        await pool.query(
+          'SELECT token_hash,revoked FROM sb_invitations WHERE id=$1',
+          [newest.id],
+        )
+      ).rows[0];
+      expect(stored.token_hash).not.toBe(newest.token);
+    });
+    it('serializes competing rotations so exactly one replacement remains eligible', async () => {
+      await issueInvitation(pool, 'owner@example.test', { bootstrap: true });
+      const links = await Promise.all([
+        rotateBootstrapInvitation(pool, 'owner@example.test'),
+        rotateBootstrapInvitation(pool, 'owner@example.test'),
+      ]);
+      const live = (
+        await pool.query(
+          'SELECT id FROM sb_invitations WHERE bootstrap AND NOT revoked AND used_by IS NULL',
+        )
+      ).rows;
+      expect(live).toHaveLength(1);
+      const winner = links.find((link) => link.id === live[0].id)!;
+      const loser = links.find((link) => link.id !== live[0].id)!;
+      expect((await signup(loser.email, loser.token)).status).toBe(403);
+      expect((await signup(winner.email, winner.token)).status).toBe(200);
+      await expect(
+        rotateBootstrapInvitation(pool, winner.email),
+      ).rejects.toThrow('admission is complete');
+    });
+    it('fences admission racing bootstrap rotation with the same advisory lock', async () => {
+      const original = await issueInvitation(pool, 'owner@example.test', {
+        bootstrap: true,
+      });
+      const blocker = await pool.connect();
+      await blocker.query('BEGIN');
+      await blocker.query('SELECT pg_advisory_xact_lock($1)', [1398233415]);
+      const rotation = rotateBootstrapInvitation(pool, original.email);
+      const admission = signup(original.email, original.token);
+      // Both can pass preliminary checks while the authoritative admission transaction is blocked.
+      try {
+        for (let n = 0; n < 100; n++) {
+          const waiting = await pool.query(
+            "SELECT count(*)::int AS n FROM pg_locks WHERE locktype='advisory' AND objid=$1 AND NOT granted",
+            [1398233415],
+          );
+          if (waiting.rows[0].n >= 2) break;
+          await new Promise((resolve) => setTimeout(resolve, 10));
+        }
+      } finally {
+        await blocker.query('COMMIT');
+        blocker.release();
+      }
+      const [rotated, admitted] = await Promise.allSettled([
+        rotation,
+        admission,
+      ]);
+      if (rotated.status === 'fulfilled') {
+        expect(admitted.status === 'fulfilled' && admitted.value.status).toBe(
+          403,
+        );
+        expect(
+          (
+            await pool.query(
+              'SELECT user_id FROM sb_admitted_users WHERE administrator',
+            )
+          ).rowCount,
+        ).toBe(0);
+        expect(
+          (
+            await pool.query('SELECT revoked FROM sb_invitations WHERE id=$1', [
+              original.id,
+            ])
+          ).rows[0].revoked,
+        ).toBe(true);
+      } else {
+        expect(admitted.status === 'fulfilled' && admitted.value.status).toBe(
+          200,
+        );
+        expect(
+          (
+            await pool.query(
+              'SELECT user_id FROM sb_admitted_users WHERE administrator',
+            )
+          ).rowCount,
+        ).toBe(1);
+      }
+    });
     it('blocks open registration, token email substitution and expired/revoked invites', async () => {
       expect(
         (

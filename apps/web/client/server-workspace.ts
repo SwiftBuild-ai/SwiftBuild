@@ -43,6 +43,7 @@ export class ServerWorkspace implements WorkspaceAdapter {
     readonly project: ServerProject,
     private store: RecoveryStore,
     private send: typeof fetch = (...args) => globalThis.fetch(...args),
+    private expectedActorId?: string,
   ) {
     this.revision = project.revision;
   }
@@ -56,7 +57,8 @@ export class ServerWorkspace implements WorkspaceAdapter {
       this.initialized = true;
     }
     return this.recovery?.dirty &&
-      (!sameArchive(this.recovery.archive, this.project.archive) ||
+      (this.recovery.pending?.kind === 'restore' ||
+        !sameArchive(this.recovery.archive, this.project.archive) ||
         (this.recovery.pending &&
           !sameArchive(this.recovery.pending.archive, this.project.archive)))
       ? structuredClone(this.recovery)
@@ -89,18 +91,26 @@ export class ServerWorkspace implements WorkspaceAdapter {
     return next;
   }
   private async flush(pending: PendingSave) {
-    const response = await this.send(`/api/v1/projects/${this.project.id}`, {
-      method: 'PUT',
-      credentials: 'same-origin',
-      headers: {
-        'content-type': 'application/json',
-        'if-match': `"${pending.revision}"`,
+    const response = await this.send(
+      `/api/v1/projects/${this.project.id}${pending.kind === 'restore' ? '/restore' : ''}`,
+      {
+        method: pending.kind === 'restore' ? 'POST' : 'PUT',
+        credentials: 'same-origin',
+        headers: {
+          'content-type': 'application/json',
+          'if-match': `"${pending.revision}"`,
+        },
+        body: JSON.stringify({
+          operationId: pending.operationId,
+          ...(pending.kind === 'restore' && this.expectedActorId
+            ? { expectedActorId: this.expectedActorId }
+            : {}),
+          ...(pending.kind === 'restore'
+            ? { sourceRevision: pending.sourceRevision }
+            : { archive: pending.archive }),
+        }),
       },
-      body: JSON.stringify({
-        operationId: pending.operationId,
-        archive: pending.archive,
-      }),
-    });
+    );
     if (!response.ok) {
       if ([401, 403, 404, 409, 412].includes(response.status))
         this.halted = true;
@@ -119,7 +129,8 @@ export class ServerWorkspace implements WorkspaceAdapter {
       result.id !== this.project.id ||
       result.workspaceId !== this.project.workspaceId ||
       !Number.isSafeInteger(result.revision) ||
-      result.revision! < pending.revision ||
+      result.revision! <
+        pending.revision + (pending.kind === 'restore' ? 1 : 0) ||
       result.revision! > pending.revision + 1 ||
       !sameArchive(validateArchive(result.archive), pending.archive)
     )
@@ -127,13 +138,75 @@ export class ServerWorkspace implements WorkspaceAdapter {
         'The server save could not be confirmed. Recovery and the retry operation are preserved.',
       );
     this.revision = result.revision!;
-    this.recovery!.pending = undefined;
+    if (pending.kind !== 'restore') this.recovery!.pending = undefined;
+  }
+  restore(sourceRevision: number, input: ProjectArchive): Promise<void> {
+    const next = this.queue
+      .catch(() => {})
+      .then(async () => {
+        if (!this.opened) await this.read();
+        if (
+          this.project.role === 'viewer' ||
+          this.halted ||
+          this.recovery?.dirty ||
+          this.recovery?.pending
+        )
+          throw new Error(
+            'Preserve unsaved work and resolve pending operations before restoring.',
+          );
+        const archive = validateArchive(input);
+        serializeArchive(archive);
+        this.recovery = {
+          version: 2,
+          archive: this.recovery!.archive,
+          dirty: true,
+          pending: {
+            kind: 'restore',
+            sourceRevision,
+            operationId: crypto.randomUUID(),
+            revision: this.revision,
+            archive,
+          },
+        };
+        await this.store.write(this.recovery);
+        await this.completeRestore();
+      });
+    this.queue = next;
+    return next;
+  }
+  retryRestore(): Promise<void> {
+    const next = this.queue
+      .catch(() => {})
+      .then(async () => {
+        await this.inspectRecovery();
+        if (
+          this.project.role === 'viewer' ||
+          this.recovery?.pending?.kind !== 'restore'
+        )
+          throw new Error('No authorized restore retry is available.');
+        await this.completeRestore();
+      });
+    this.queue = next;
+    return next;
+  }
+  private async completeRestore() {
+    const pending = this.recovery!.pending!;
+    await this.flush(pending);
+    const confirmed: Recovery = {
+      version: 2,
+      archive: pending.archive,
+      dirty: false,
+    };
+    await this.store.write(confirmed);
+    this.recovery = confirmed;
   }
   private async save(input: ProjectArchive) {
     if (!this.opened) await this.read();
     const archive = validateArchive(input);
     serializeArchive(archive);
     const oldPending = this.recovery?.pending;
+    if (oldPending?.kind === 'restore')
+      throw new Error('Resolve the pending restore before saving edits.');
     this.recovery = {
       version: 1,
       archive,

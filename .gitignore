@@ -9,6 +9,9 @@ coverage/
 *.tsbuildinfo
 **/next-env.d.ts
 .env
+server.env
+**/__pycache__/
+**/.pytest_cache/
 .env.*
 !.env.example
 *.pem

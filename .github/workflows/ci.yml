@@ -36,6 +36,16 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12.10'
+      - name: Prepare and verify computation contracts
+        run: |
+          sh tooling/scripts/computation-dev.sh setup
+          pnpm computation:check
+          sh tooling/scripts/computation-dev.sh check
+          sh tooling/scripts/computation-dev.sh test
+          echo "SWIFTBUILD_COMPUTATION_PYTHON=$GITHUB_WORKSPACE/services/computation/.venv/bin/python" >> "$GITHUB_ENV"
       - run: pnpm verify
       - run: pnpm build:storybook
       - run: pnpm exec playwright install --with-deps chromium
@@ -65,6 +75,8 @@ jobs:
       - name: Container diagnostics
         if: failure()
         run: docker compose logs
+      - name: Engineering deployment and recovery smoke
+        run: sh tooling/scripts/server-smoke.sh
       - name: Stop containers
         if: always()
         run: docker compose down

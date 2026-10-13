@@ -1,6 +1,6 @@
 # SwiftBuild full product roadmap
 
-Status reviewed October 12, 2026. SwiftBuild's target is a complete open-source architecture engineering platform for individual developers, architects and engineering teams: design, validate, simulate, review, version and maintain systems. Every planned capability below remains part of that target. No delivery dates are implied; partial implementation does not complete a milestone.
+Status reviewed October 13, 2026. SwiftBuild's target is a complete open-source architecture engineering platform for individual developers, architects and engineering teams: design, validate, simulate, review, version and maintain systems. Every planned capability below remains part of that target. No delivery dates are implied; partial implementation does not complete a milestone.
 
 ## Implemented foundation
 
@@ -12,11 +12,11 @@ The engines support declared service, database, cache, queue and router behavior
 
 ## Dependency order and completion gates
 
-Milestone 1 is **in progress**; milestones 2–8 are **planned**. The critical path is durable authenticated server projects → shared review → safe concurrent editing. Architecture-as-code and calibrated modeling can proceed alongside team work after their stated prerequisites. Implement coherent vertical slices and preserve existing browser workflows throughout.
+Milestones 1 and 6 are **in progress**; milestones 2–5 and 7–8 are **planned**. The critical path is durable authenticated server projects → shared review → safe concurrent editing. Architecture-as-code and calibrated modeling can proceed alongside team work after their stated prerequisites. Implement coherent vertical slices and preserve existing browser workflows throughout.
 
 ### 1. Durable server projects and operational foundation
 
-Status: **in progress**. Implemented slices: shared archive contracts, checksum-verified transactional migrations, durable server revisions/audit events, invite-only identity, role enforcement, operator-issued recovery, authenticated HTTP routes, account/project screens, server editing, immutable history exports and explicit complete saved-draft promotion. Browser recovery preserves uncertain operations and stale/offline edits; viewer previews remain local. Remaining gates include persistent creation retries across reload, complete revision-restore UX, operator bootstrap-link rotation, repeatable full server deployment, least-privilege role provisioning and tested database backup/restore. Add isolated job processing when needed by its stated resource/failure requirements. Accepted decisions and implementation evidence are linked from [current status](status.md).
+Status: **in progress**. Implemented slices: shared archive contracts, checksum-verified transactional migrations, durable server revisions/audit events, invite-only identity, role enforcement, operator-issued recovery, authenticated HTTP routes, account/project screens, server editing, immutable history exports and explicit complete saved-draft promotion. Browser recovery preserves uncertain operations and stale/offline edits; viewer previews remain local. This release adds leased engineering jobs, a private Python computation supervisor, an optional full-server Compose configuration, runtime-role provisioning and a backup/restore smoke workflow. Creation retries now survive reload, prior archives can be restored as new attributable revisions, and operators can rotate unused bootstrap links. Operator backup manifests and isolated runtime-role recovery tooling are implemented; their container drill is included in required hosted CI verification. Remaining gates include deployment-specific production operational recovery validation. Accepted decisions and implementation evidence are linked from [current status](status.md).
 
 Prerequisite: retain current schema, migration, archive and injected storage contracts; record the server persistence and security design before implementing it.
 
@@ -58,6 +58,8 @@ Complete when contributors can validate, test, distribute and explicitly upgrade
 
 ### 6. Calibrated capacity and failure analysis
 
+Status: **in progress**. Stationary reliability, shared failure groups, forced-outage impact and bounded sensitivity jobs are implemented as a focused slice. Outage timelines, richer distributions, calibrated resource sharing and the other completion gates remain planned. See [engineering analysis](engineering/analysis.md).
+
 Prerequisite: current scenario, provenance, behavior and numerical-reference contracts. Depends on milestone 1 for durable shared jobs and measurement ingestion services, not for pure engine improvements.
 
 Outcome: representative measurement ingestion, independently verified resource-sharing models, attributed initial backlog, replication overhead, failure distributions, failure-mode analysis, scenario comparison and sensitivity analysis. Extend declared active-user, traffic, growth, payload, retention, concurrency, latency and availability objectives where supported semantics are missing. Add custom deterministic rules and explicit suppression policies with traceable reasons.
@@ -68,7 +70,7 @@ Complete when each added behavior has explicit units and provenance, hand-calcul
 
 Prerequisite: milestone 4 semantic diff and reproducible tests; milestones 1–2 for durable team workflows; milestone 6 for any new calibrated report claims.
 
-Outcome: deployment-manifest and infrastructure-as-code import, declared-versus-observed drift detection, model consistency checks, service-dependency exploration, reusable architecture patterns, architecture comparison, connected engineering reports and automated reviews. AI assistance produces inspectable proposals with evidence and reversible changes.
+Outcome: deployment-manifest and infrastructure-as-code import, declared-versus-observed drift detection, model consistency checks, service-dependency exploration, reusable architecture patterns, architecture comparison, connected engineering reports and automated reviews. Architecture design remains manual. Deterministic analysis and review produce inspectable evidence; the open-source product does not adopt AI.
 
 Complete when imports preview their mappings and unsupported constructs before replacement, retain source provenance, and never silently execute deployment actions. Drift comparisons identify observation scope and time; reports trace requirements, decisions, findings and simulation inputs. Automated proposals require validation, preserve permissions and history, and expose uncertainty. Test partial observations, incompatible versions, import failures and rejected proposals.
 

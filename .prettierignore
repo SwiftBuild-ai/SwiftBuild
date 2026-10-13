@@ -13,3 +13,7 @@ LICENSE
 
 apps/web/public/licenses/
 NOTICE
+services/computation/contracts.json
+services/computation/.venv/
+services/computation/.pytest_cache/
+**/.pytest_cache/

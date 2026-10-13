@@ -12,6 +12,7 @@ memory
 math
 *.local.md
 .env*
+server.env
 !.env.example
 *.log
 **/storybook-static
@@ -29,6 +30,9 @@ logs
 **/dist
 **/build
 **/out
+**/.venv
+**/__pycache__
+**/.pytest_cache
 AGENT.local.md
 IDENTITY.local.md
 USER.local.md

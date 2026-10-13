@@ -1,0 +1,21 @@
+{
+  "name": "@swiftbuild/computation-contracts",
+  "version": "0.0.1",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "generate": "tsx src/generate.ts"
+  },
+  "dependencies": {
+    "@swiftbuild/architecture-schema": "workspace:*",
+    "zod": "^4.6.5",
+    "canonicalize": "2.1.0"
+  },
+  "devDependencies": {
+    "tsx": "4.20.6"
+  }
+}

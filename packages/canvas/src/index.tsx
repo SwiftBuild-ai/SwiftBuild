@@ -82,6 +82,7 @@ import { CatalogSidebar, ObjectSidebar } from './catalog';
 import { recordCatalogUse } from './catalog-preferences';
 import { StoreContext, useEditor, GraphCanvas, Inspector } from './graph';
 import { importDocument, MAX_IMPORT_BYTES, DRAFT_KEY } from './storage';
+import type { AnalysisAdapter } from '@swiftbuild/computation-contracts';
 export type WorkbenchStorage = {
   createAdapter: () => WorkspaceAdapter;
   savedLabel: string;
@@ -89,11 +90,19 @@ export type WorkbenchStorage = {
   locationLabel?: string;
 };
 export type WorkbenchProps = {
+  analysis?: AnalysisAdapter;
+  analysisDirty?: boolean;
   initialArchive?: ProjectArchive;
   storage?: WorkbenchStorage;
   onArchiveChange?: (archive: ProjectArchive) => void;
 };
-function Editor({ initialArchive, storage, onArchiveChange }: WorkbenchProps) {
+function Editor({
+  initialArchive,
+  storage,
+  onArchiveChange,
+  analysis,
+  analysisDirty,
+}: WorkbenchProps) {
   const savedLabel = storage?.savedLabel ?? 'Saved locally';
   const activityLabel = storage ? savedLabel : 'Saved draft';
   const document = useEditor((s) => s.history.present);
@@ -989,6 +998,8 @@ function Editor({ initialArchive, storage, onArchiveChange }: WorkbenchProps) {
           )}
           {section !== null && (
             <EngineeringWorkbench
+              analysis={analysis}
+              analysisDirty={analysisDirty}
               section={section}
               onClose={() => setSection(null)}
               workspace={workspace}

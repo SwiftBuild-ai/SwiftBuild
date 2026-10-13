@@ -2,6 +2,7 @@ import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 const allowed = {
   'architecture-schema': [],
+  'computation-contracts': ['architecture-schema'],
   'architecture-model': ['architecture-schema'],
   'graph-engine': ['architecture-schema', 'architecture-model'],
   'components-core': ['architecture-schema'],
@@ -23,10 +24,17 @@ const allowed = {
     'graph-engine',
     'capacity-engine',
   ],
-  'server-core': ['project-format'],
+  'server-core': [
+    'project-format',
+    'computation-contracts',
+    'architecture-schema',
+    'capacity-engine',
+    'graph-engine',
+  ],
   'design-tokens': [],
   ui: ['design-tokens'],
   canvas: [
+    'computation-contracts',
     'project-format',
     'architecture-schema',
     'architecture-model',

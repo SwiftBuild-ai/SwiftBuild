@@ -4,12 +4,14 @@ import {
   type ProjectArchive,
 } from '@swiftbuild/canvas/workspace';
 export type PendingSave = {
+  kind?: 'save' | 'restore';
+  sourceRevision?: number;
   operationId: string;
   revision: number;
   archive: ProjectArchive;
 };
 export type Recovery = {
-  version: 1;
+  version: 1 | 2;
   archive: ProjectArchive;
   dirty: boolean;
   pending?: PendingSave;
@@ -64,7 +66,7 @@ export function checkedRecovery(input: unknown): Recovery {
       'Recovery data is invalid. Export stored work before replacing it.',
     );
   const value = input as Partial<Recovery>;
-  if (value.version !== 1 || typeof value.dirty !== 'boolean')
+  if (![1, 2].includes(value.version!) || typeof value.dirty !== 'boolean')
     throw new Error('Recovery format is unsupported.');
   const archive = validateArchive(value.archive);
   serializeArchive(archive);
@@ -80,7 +82,23 @@ export function checkedRecovery(input: unknown): Recovery {
       )
     )
       throw new Error('Pending recovery operation is invalid.');
+    if (p.kind !== undefined && p.kind !== 'save' && p.kind !== 'restore')
+      throw new Error('Pending operation kind is invalid.');
+    if (
+      p.kind === 'restore' &&
+      (value.version !== 2 ||
+        !Number.isSafeInteger(p.sourceRevision) ||
+        p.sourceRevision! < 1 ||
+        p.sourceRevision! > p.revision)
+    )
+      throw new Error('Pending restore source is invalid.');
+    if (p.kind !== 'restore' && p.sourceRevision !== undefined)
+      throw new Error('Unexpected restore source.');
     pending = {
+      ...(p.kind ? { kind: p.kind } : {}),
+      ...(p.sourceRevision !== undefined
+        ? { sourceRevision: p.sourceRevision }
+        : {}),
       operationId: p.operationId,
       revision: p.revision,
       archive: validateArchive(p.archive),
@@ -88,7 +106,7 @@ export function checkedRecovery(input: unknown): Recovery {
     serializeArchive(pending.archive);
   }
   return {
-    version: 1,
+    version: value.version!,
     archive,
     dirty: value.dirty,
     ...(pending ? { pending } : {}),

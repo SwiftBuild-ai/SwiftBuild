@@ -1,0 +1,6 @@
+fastapi==0.143.0
+pydantic==2.14.1
+uvicorn==0.54.0
+numpy==2.2.3
+jsonschema==4.23.0
+jcs==0.2.1

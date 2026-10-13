@@ -1,0 +1,91 @@
+services:
+  database:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: '${SWIFTBUILD_DB_NAME:-swiftbuild}'
+      POSTGRES_PASSWORD: '${SWIFTBUILD_DB_ADMIN_PASSWORD:?Set the private database administrator password}'
+    volumes:
+      - swiftbuild-database:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+  migrate:
+    build:
+      context: .
+      target: operations
+    environment:
+      DATABASE_URL: 'postgresql://postgres:${SWIFTBUILD_DB_ADMIN_PASSWORD}@database:5432/${SWIFTBUILD_DB_NAME:-swiftbuild}'
+      SWIFTBUILD_DB_NAME: '${SWIFTBUILD_DB_NAME:-swiftbuild}'
+      SWIFTBUILD_URL: '${SWIFTBUILD_URL:-http://localhost:3000}'
+      SWIFTBUILD_ALLOW_LOCAL_HTTP: '${SWIFTBUILD_ALLOW_LOCAL_HTTP:-1}'
+      SWIFTBUILD_AUTH_SECRET: '${SWIFTBUILD_AUTH_SECRET}'
+      SWIFTBUILD_COMPUTATION_TOKEN: '${SWIFTBUILD_COMPUTATION_TOKEN}'
+      SWIFTBUILD_DB_RUNTIME_PASSWORD: '${SWIFTBUILD_DB_RUNTIME_PASSWORD:?Set the private runtime password}'
+      SWIFTBUILD_RELEASE_IMAGE: '${SWIFTBUILD_RELEASE_IMAGE:-unrecorded}'
+    command: ['sh', 'tooling/scripts/provision-server.sh']
+    depends_on:
+      database:
+        condition: service_healthy
+  web:
+    environment:
+      DATABASE_URL: 'postgresql://swiftbuild_runtime:${SWIFTBUILD_DB_RUNTIME_PASSWORD}@database:5432/${SWIFTBUILD_DB_NAME:-swiftbuild}'
+      SWIFTBUILD_URL: '${SWIFTBUILD_URL:-http://localhost:3000}'
+      SWIFTBUILD_ALLOW_LOCAL_HTTP: '${SWIFTBUILD_ALLOW_LOCAL_HTTP:-1}'
+      SWIFTBUILD_AUTH_SECRET: '${SWIFTBUILD_AUTH_SECRET:?Set a stable private identity secret}'
+      SWIFTBUILD_COMPUTATION_ENABLED: '1'
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3000/api/v1/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+  computation:
+    build: services/computation
+    environment:
+      SWIFTBUILD_COMPUTATION_TOKEN: '${SWIFTBUILD_COMPUTATION_TOKEN:?Set a private computation token}'
+      SWIFTBUILD_COMPUTATION_IMAGE: '${SWIFTBUILD_COMPUTATION_IMAGE:-swiftbuild-computation-local}'
+    cpus: 1
+    mem_limit: 512m
+    pids_limit: 64
+    read_only: true
+    tmpfs: ['/tmp:size=32m,mode=1777']
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
+    restart: unless-stopped
+  dispatcher:
+    working_dir: /app/packages/server-core
+    build:
+      context: .
+      target: operations
+    environment:
+      DATABASE_URL: 'postgresql://swiftbuild_runtime:${SWIFTBUILD_DB_RUNTIME_PASSWORD}@database:5432/${SWIFTBUILD_DB_NAME:-swiftbuild}'
+      SWIFTBUILD_COMPUTATION_URL: 'http://computation:8000'
+      SWIFTBUILD_COMPUTATION_TOKEN: '${SWIFTBUILD_COMPUTATION_TOKEN}'
+      NODE_OPTIONS: '--v8-pool-size=2 --max-old-space-size=384'
+      UV_THREADPOOL_SIZE: '2'
+      GOMAXPROCS: '2'
+    cpus: 1
+    mem_limit: 512m
+    pids_limit: 64
+    command: ['node', '--import', 'tsx', 'src/dispatcher.ts']
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      computation:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'node', '--import', 'tsx', 'src/worker-health.ts']
+      interval: 15s
+      timeout: 10s
+      start_period: 20s
+    restart: unless-stopped
+volumes:
+  swiftbuild-database:

@@ -37,6 +37,58 @@ const changed = (archive: ProjectArchive, name: string) => {
   return next;
 };
 describe('server workspace recovery and retry protocol', () => {
+  it('retains a lost restore response across reload and retries its exact source and base', async () => {
+    const { project, store, data } = fixture();
+    const restored = changed(project.archive, 'Historical');
+    const send = vi.fn<typeof fetch>(async (url, options) => {
+      expect(String(url)).toBe(`/api/v1/projects/${project.id}/restore`);
+      expect(options?.method).toBe('POST');
+      expect(new Headers(options?.headers).get('if-match')).toBe('"1"');
+      expect(data()?.pending).toMatchObject({
+        kind: 'restore',
+        sourceRevision: 1,
+        revision: 1,
+      });
+      if (send.mock.calls.length === 1) throw new Error('response lost');
+      return Response.json({ ...project, revision: 2, archive: restored });
+    });
+    const adapter = new ServerWorkspace(project, store, send);
+    await adapter.read();
+    await expect(adapter.restore(1, restored)).rejects.toThrow('response lost');
+    const reopened = new ServerWorkspace(
+      { ...project, revision: 2, archive: restored },
+      store,
+      send,
+    );
+    expect((await reopened.inspectRecovery())?.pending?.kind).toBe('restore');
+    await reopened.retryRestore();
+    expect(send.mock.calls[0]?.[1]?.body).toBe(send.mock.calls[1]?.[1]?.body);
+    expect(data()).toMatchObject({ dirty: false, archive: restored });
+  });
+  it('refuses restoration while a save is unresolved or for viewer previews', async () => {
+    const { project, store } = fixture();
+    const send = vi.fn<typeof fetch>(async () => {
+      throw new Error('offline');
+    });
+    const adapter = new ServerWorkspace(project, store, send);
+    await adapter.read();
+    await expect(
+      adapter.write(changed(project.archive, 'unsaved')),
+    ).rejects.toThrow('offline');
+    await expect(adapter.restore(1, project.archive)).rejects.toThrow(
+      'Preserve unsaved',
+    );
+    const other = fixture();
+    const viewer = new ServerWorkspace(
+      { ...other.project, role: 'viewer' },
+      other.store,
+      send,
+    );
+    await viewer.read();
+    await expect(viewer.restore(1, other.project.archive)).rejects.toThrow(
+      'Preserve unsaved',
+    );
+  });
   it('calls the native browser transport with its global receiver', async () => {
     const { project, store } = fixture();
     const original = globalThis.fetch;
@@ -258,7 +310,7 @@ describe('transactional browser recovery', () => {
     });
     await expect(
       recovery.write({
-        version: 2,
+        version: 3,
         archive: project.archive,
         dirty: false,
       } as unknown as Recovery),

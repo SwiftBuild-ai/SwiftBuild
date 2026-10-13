@@ -1,6 +1,6 @@
 # SwiftBuild current status
 
-Implementation inventory updated October 12, 2026. Server editor implementation was verified at `4992e59`, with database-backed browser verification at `7a617bc`. The server API foundation at `8603007`, account delivery and earlier October 11 documentation baseline at `20dc9ee` remain recorded below. This page distinguishes source-backed capabilities from dated execution results and does not certify production readiness.
+Implementation inventory updated October 13, 2026. Durable creation recovery, immutable restoration and bootstrap rotation are recorded in the foundation verification entries below. Server editor implementation was verified at `4992e59`, with database-backed browser verification at `7a617bc`. The server API foundation at `8603007`, account delivery and earlier October 11 documentation baseline at `20dc9ee` remain recorded below. This page distinguishes source-backed capabilities from dated execution results and does not certify production readiness.
 
 ## Capability inventory
 
@@ -12,9 +12,9 @@ Implementation inventory updated October 12, 2026. Server editor implementation 
 | Engineering records  | Linked requirements, decisions, scenarios, profiles, evidence and assessments                                          | No team review, deployment drift service or automated operational observation                                          |
 | Validation           | Structural checks and deterministic policy outcomes with evidence and unknown states                                   | Declared checks do not establish security or availability guarantees                                                   |
 | Capacity             | Workload estimation, analytical propagation and seeded bounded topology simulation                                     | Limited to registered behavior, declared evidence and supported operating ranges                                       |
-| Persistence          | Independent browser drafts, authorized server editing, transactional revisions, retry operations and separate recovery | Creation retry persistence across reload and operational backup/restore remain planned                                 |
+| Persistence          | Independent browser drafts, authorized server editing, transactional revisions, retry operations and separate recovery | Durable creation recovery and immutable restoration implemented; production backup/restore validation remains open     |
 | Accounts             | Invite-only password accounts, configured organizational OIDC, sessions, roles, invitation/recovery screens            | Operator-issued links need no mail server; deployed organizational provider and independent security review unverified |
-| Self-hosting         | Standalone web image, non-root runtime, optional configured API host and separate health/readiness                     | Default compose remains browser-local; full server deployment and backup/restore remain planned                        |
+| Self-hosting         | Standalone web image, non-root runtime, optional configured API host and separate health/readiness                     | Default Compose remains browser-local; optional full-server deployment and isolated backup/restore are verified below  |
 | Architecture-as-code | Native JSON import/export and pure domain engines                                                                      | YAML, standalone CLI and architecture CI commands are planned                                                          |
 
 [Engineering documentation](engineering/README.md) describes supported calculations and limitations. The [roadmap](roadmap.md) preserves the full target platform, including a real backend and collaboration.
@@ -49,6 +49,46 @@ Local formatting, lint/dependency boundaries, types, 86 unit tests and productio
 
 Server editing, saved-draft promotion and explicit browser recovery are implemented. Default compose is still browser-local. Full deployment, runtime role provisioning, backup/restore, creation retry recovery across reload and complete revision-restoration UI remain unfinished. Deployed organizational sign-in, private reporting contacts, independent security review and full accessibility certification remain unverified.
 
+## Engineering computation verification on October 13, 2026
+
+The focused integration adds separate analysis contracts, generated JSON Schema/Pydantic types, canonical cross-language fixtures, durable TypeScript jobs, isolated Python reliability and numerical sensitivity, existing-engine capacity sweeps, and a host-injected engineering workbench. Native format 1.1, archive format 1.0, TypeScript engine behavior, authentication and browser-local editing remain intact. The open-source product uses manual design without AI adoption.
+
+Local verification passed formatting, lint/package boundaries, type checks, 119 TypeScript tests across 24 files (including every real isolated-database test and the complete dispatcher/Python process integration), and the production build. Fourteen Python tests passed, including numerical references, shared/repeated failures, deterministic sampling, schema/canonical fixtures, real child execution, cancellation, deadlines, memory-failure classification, malformed-response redaction and integer/float wire compatibility. Schema and generated-model drift checks passed. Twenty-two browser-local tests passed; all four separate server browser tests passed with a real Python service/dispatcher, including reload and historical bundle export/import. Dark and narrow analysis captures were inspected.
+
+The optional full-server Compose smoke passed with one-CPU/512 MiB computation limits, bounded process counts, explicit migrations and a separate runtime database role. It exercised authenticated HTTP submission, the isolated Python child, durable reports, analysis bundles, database dump/restore into an isolated test database, restored admission/session authorization, and numerical replay. The test deployment and restore database were removed afterward. Docker was reachable through the local Linux environment; its Windows endpoint remained unavailable. Initial health-check failures from excessive Node threads were corrected with direct startup and bounded thread pools. An earlier concurrent browser run collided on artifact cleanup; the suites passed when run sequentially.
+
+At this integration stage, milestones 1 and 6 remained open. Subsequent foundation entries below implement project-creation retry recovery, revision restoration and bootstrap-link rotation; outage timelines, richer calibration and other roadmap gates remain unfinished. Worker topology currently uses one dispatcher/computation pair; retention policy, production recovery certification, independent security review and full accessibility certification remain unverified. See [models](engineering/analysis.md), [deployment](self-hosting/computation.md) and [ADR 0009](adr/0009-engineering-computation-service.md).
+
 ## Documentation policy
 
 SwiftBuild is the only brand in maintained prose and commit messages. Exact executable commands, file paths, dependency/API identifiers and required third-party attribution are exceptions. Technology identities remain intact in the implementation and serialized documents. Maintained guides use internal links; source research and temporary audit evidence stay in ignored local directories. Historical release notes and original legal notices retain their original text.
+
+### 2026-10-13 — durable project creation recovery
+
+Creation intents now survive reload for all server creation/copy paths. Transactional insertion rejects competing intents and scoped recovery preserves uncertain responses. Focused recovery tests cover reload, payload replay, competing tabs, account isolation, denial, malformed confirmation and storage failure. The server browser workflow commits a creation, drops its response, reloads and retries the same operation to the original project.
+
+### 2026-10-13 — immutable revision restoration
+
+A distinct authenticated restoration endpoint appends complete attributed archives with source/base metadata and idempotent retries. Existing migration fixtures preserve archive bodies and digests. Transactional tests cover immutable history, identical content, competing writes, permissions, revocation, operation reuse and audit rollback. Browser coverage exercises preview, keyboard confirmation, narrow layouts, lost-response reload/retry and intervening-writer preservation. Deployment recovery replays the original creation and restoration operations after database restore.
+
+### 2026-10-13 — operator bootstrap-link rotation
+
+The operator CLI can replace a lost or expired bootstrap invitation before admission. Concurrent rotation and admission use the same lock order; every unused old link is revoked in the issuing transaction. Real database tests exercise repeated/concurrent rotation, expired/revoked links, admission races, post-enrollment refusal and private CLI delivery. No user-facing token issuance endpoint was added.
+
+## Foundation verification on October 13, 2026
+
+Implemented code through `728cef9` preserves the existing TypeScript semantic, validation and simulation engines and private Python computation boundary. Creation recovery, immutable restoration and bootstrap rotation were committed as separate verified slices. The final run of `pnpm verify` passed formatting, lint/boundaries, types, all 134 tests across 25 files (including real isolated-database suites with no skips), and the production build.
+
+Python verification passed 14 tests and both generated-schema/model drift checks. Browser-local verification passed all 22 local tests; its five server-only tests are intentionally run separately. The dedicated server suite passed all five tests, including committed creation response loss/reload/retry, revoked-workspace recovery/export, immutable restoration preview and keyboard confirmation, narrow layouts, restore response loss/reload/retry, intervening-writer preservation and the existing computation workflow. Fresh restoration captures were inspected and a narrow history layout defect was corrected.
+
+Default browser-local Docker startup and HTTP smoke passed. The optional full-server Docker deployment passed health/readiness, private computation execution, bundle export, database dump/restore, restored authorization, original creation/restoration operation replay without extra revisions, and numerical replay. Disposable deployments and test schemas are cleaned afterward. These checks demonstrate isolated local recovery; production retention, recovery objectives, deployed organizational sign-in, independent security review and full accessibility certification remain separate open gates. Milestones 1 and 6 remain in progress; the rest of the roadmap retains its dependency order.
+
+## Operator recovery tooling on October 13, 2026
+
+All previously verified work through `faa2500` was pushed to `origin/feat/engineering-computation`. The next foundation slice adds private `backup`, `verify-backup` and `recovery-drill` commands, shared-snapshot dump manifests, streaming integrity checks, isolated target guards and restored runtime-role checks. The deployment smoke invokes the actual CLI and performs restored application/numerical replay with the runtime connection. See [operator instructions](self-hosting/recovery.md) and [ADR 0011](adr/0011-operator-recovery-drills.md).
+
+Local verification passed 101 non-database TypeScript tests (including five new recovery boundary tests), formatting, lint/boundaries, types, production build, 14 Python tests and generated-contract/model drift checks. These checks exclude the 38 real database integration tests and do not establish recovery integration. Docker Desktop's engine was unavailable, its graceful restart failed, and the operator explicitly requested keeping Docker stopped. Real database tests, the modified full-stack recovery smoke and current container verification remain pending. This slice does not complete milestone 1 or production recovery acceptance.
+
+### Hosted acceptance and merge gate
+
+The published computation, foundation and operator recovery slices are reviewed in [PR 41](https://github.com/SwiftBuild-ai/SwiftBuild/pull/41). Hosted `verify` supplies the real isolated database, Python tests, contract drift checks, production build and both browser suites; `docker-smoke` supplies browser-local startup and the modified full-stack CLI backup/recovery/runtime replay. The PR must pass both checks on its exact final head before regular merge. Local Docker remains stopped at the operator's request. Hosted recovery checks do not certify a production deployment or complete the remaining roadmap gates.

@@ -11,7 +11,11 @@ import {
   MAX_ARCHIVE_BYTES,
   type ProjectArchive,
 } from '@swiftbuild/canvas/workspace';
-import { api, createProject } from '../client/project-api';
+import {
+  ProjectCreation,
+  type CreationIntent,
+} from '../client/project-creation';
+import { api, downloadArchive } from '../client/project-api';
 export type Workspace = {
   id: string;
   name: string;
@@ -26,11 +30,13 @@ type Project = {
 type Cursor = { id: string; updatedAt: string };
 export function ProjectList({
   initialWorkspaces,
+  userId,
 }: {
+  userId: string;
   initialWorkspaces: Workspace[];
 }) {
   const [interactive, setInteractive] = useState(false);
-  useEffect(() => setInteractive(true), []);
+  const [creation] = useState(() => new ProjectCreation(userId));
   const [workspaces, setWorkspaces] = useState(initialWorkspaces),
     [workspaceCursor, setWorkspaceCursor] = useState(
       initialWorkspaces.length === 100 ? initialWorkspaces.at(-1)!.id : null,
@@ -42,14 +48,48 @@ export function ProjectList({
     [loading, setLoading] = useState(false),
     [error, setError] = useState(''),
     [name, setName] = useState('');
-  const [pending, setPending] = useState<{
-    archive: ProjectArchive;
-    operationId: string;
-    workspaceId: string;
-  } | null>(null);
+  const [pending, setPending] = useState<CreationIntent | null>(null);
+  const [recoveryWorkspaces, setRecoveryWorkspaces] = useState<string[]>([]);
+  useEffect(() => {
+    let active = true;
+    void creation
+      .workspaceIds()
+      .then((ids) => {
+        if (active) {
+          setRecoveryWorkspaces(ids);
+          setSelected((previous) => previous || ids[0] || '');
+        }
+      })
+      .catch((failure) => {
+        if (active) setError(failure.message);
+      });
+    return () => {
+      active = false;
+    };
+  }, [creation]);
+  useEffect(() => {
+    let active = true;
+    setInteractive(false);
+    void creation
+      .read(selected)
+      .then((value) => {
+        if (active) {
+          setPending(value);
+          setInteractive(true);
+        }
+      })
+      .catch((failure) => {
+        if (active) setError(failure.message);
+      });
+    return () => {
+      active = false;
+    };
+  }, [creation, selected]);
   const file = useRef<HTMLInputElement>(null);
   const generation = useRef(0);
-  const canWrite = workspaces.find((w) => w.id === selected)?.role !== 'viewer';
+  const canWrite = ['owner', 'editor'].includes(
+    workspaces.find((w) => w.id === selected)?.role ?? '',
+  );
   useEffect(() => {
     const current = ++generation.current;
     setProjects([]);
@@ -91,17 +131,22 @@ export function ProjectList({
     }
   }
   async function submitArchive(archive: ProjectArchive) {
-    const candidate = {
-      archive,
-      operationId: crypto.randomUUID(),
-      workspaceId: selected,
-    };
+    let candidate: CreationIntent;
+    try {
+      candidate = await creation.prepare(selected, archive);
+    } catch (failure) {
+      const retained = await creation.read(selected);
+      if (retained) {
+        setPending(retained);
+        throw new Error(
+          'An unconfirmed creation already exists in this workspace. Retry or export its original archive.',
+          { cause: failure },
+        );
+      }
+      throw failure;
+    }
     setPending(candidate);
-    const result = await createProject(
-      candidate.workspaceId,
-      candidate.archive,
-      candidate.operationId,
-    );
+    const result = await creation.submit(candidate);
     window.location.assign('/projects/' + result.id);
   }
   return (
@@ -115,7 +160,7 @@ export function ProjectList({
           Workspace
           <select
             value={selected}
-            disabled={busy || !!pending}
+            disabled={busy}
             onChange={(event) => setSelected(event.target.value)}
           >
             {workspaces.map((w) => (
@@ -123,6 +168,13 @@ export function ProjectList({
                 {w.name} · {w.role}
               </option>
             ))}
+            {recoveryWorkspaces
+              .filter((id) => !workspaces.some((w) => w.id === id))
+              .map((id) => (
+                <option key={id} value={id}>
+                  Creation recovery · {id}
+                </option>
+              ))}
           </select>
         </label>
         {workspaceCursor && (
@@ -241,7 +293,9 @@ export function ProjectList({
         <p className="project-note">
           {canWrite
             ? 'Import and copy actions upload a complete archive only when selected. The saved browser draft stays intact; unsaved edits in another tab are not included.'
-            : 'Viewer access: open projects for inspection and local previews. Server saves are disabled.'}
+            : workspaces.some((w) => w.id === selected)
+              ? 'Viewer access: open projects for inspection and local previews. Server saves are disabled.'
+              : 'Workspace membership is unavailable. Export local creation recovery; retry requires current server authorization.'}
         </p>
       )}
       {pending && (
@@ -254,19 +308,15 @@ export function ProjectList({
             disabled={busy}
             onClick={() =>
               void run(async () => {
-                const result = await createProject(
-                  pending.workspaceId,
-                  pending.archive,
-                  pending.operationId,
-                );
+                const result = await creation.submit(pending);
                 window.location.assign('/projects/' + result.id);
               })
             }
           >
             Retry project creation
           </Button>
-          <Button disabled={busy} onClick={() => setPending(null)}>
-            Cancel retry
+          <Button onClick={() => downloadArchive(pending.archive)}>
+            Export pending creation archive
           </Button>
         </div>
       )}

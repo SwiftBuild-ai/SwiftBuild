@@ -8,6 +8,7 @@ import { transaction } from './migrate';
 const emailSchema = z.email().transform((s) => s.toLowerCase());
 const tokenHash = (token: string) =>
   createHash('sha256').update(token).digest('hex');
+const bootstrapLock = 1398233415;
 type Invite = {
   id: string;
   email: string;
@@ -49,6 +50,7 @@ export async function issueInvitation(
   email: string,
   options: {
     bootstrap?: boolean;
+    rotateBootstrap?: boolean;
     workspaceId?: string;
     role?: Invite['role'];
   } = {},
@@ -62,16 +64,39 @@ export async function issueInvitation(
     throw new Error('A workspace is required.');
   if (options.bootstrap && options.workspaceId)
     throw new Error('Bootstrap cannot target an existing workspace.');
+  if (options.rotateBootstrap && !options.bootstrap)
+    throw new Error('Rotation applies only to bootstrap invitations.');
   const token = randomBytes(32).toString('base64url');
   const inviteId = randomUUID();
   await transaction(pool, async (client) => {
     if (options.bootstrap) {
-      await client.query('SELECT pg_advisory_xact_lock($1)', [1398233415]);
-      if ((await client.query('SELECT id FROM sb_instance')).rowCount)
+      await client.query('SELECT pg_advisory_xact_lock($1)', [bootstrapLock]);
+      const issued = (await client.query('SELECT id FROM sb_instance'))
+        .rowCount;
+      if (options.rotateBootstrap) {
+        if (!issued)
+          throw new Error(
+            'Issue the initial bootstrap invitation before rotating it.',
+          );
+        if (
+          (
+            await client.query(
+              'SELECT 1 FROM sb_invitations WHERE bootstrap AND used_by IS NOT NULL UNION ALL SELECT 1 FROM sb_admitted_users WHERE administrator LIMIT 1',
+            )
+          ).rowCount
+        )
+          throw new Error(
+            'Bootstrap admission is complete. Use existing-account operator recovery.',
+          );
+        await client.query(
+          'UPDATE sb_invitations SET revoked=true WHERE bootstrap AND used_by IS NULL AND NOT revoked',
+        );
+      } else if (issued)
         throw new Error(
           'Instance already bootstrapped. Use an existing administrator or the documented operator recovery flow.',
         );
-      await client.query('INSERT INTO sb_instance (id) VALUES (1)');
+      if (!issued)
+        await client.query('INSERT INTO sb_instance (id) VALUES (1)');
     } else if (
       !(
         await client.query('SELECT id FROM sb_workspaces WHERE id=$1', [
@@ -93,6 +118,14 @@ export async function issueInvitation(
     );
   });
   return { id: inviteId, token, email: normalized };
+}
+
+/** Private operator action; never expose token issuance through a user-facing route. */
+export function rotateBootstrapInvitation(pool: Pool, email: string) {
+  return issueInvitation(pool, email, {
+    bootstrap: true,
+    rotateBootstrap: true,
+  });
 }
 
 export function createIdentity(pool: Pool, config: IdentityConfig) {
@@ -126,6 +159,8 @@ export function createIdentity(pool: Pool, config: IdentityConfig) {
   };
   async function admit(userId: string, email: string, token?: string) {
     await transaction(pool, async (client) => {
+      // Acquire the same lock before invitation row locks, including regular admission.
+      await client.query('SELECT pg_advisory_xact_lock($1)', [bootstrapLock]);
       const result = await client.query<Invite>(
         'SELECT id,email,workspace_id,role,bootstrap FROM sb_invitations WHERE email=$1 AND ($2::text IS NULL OR token_hash=$2) AND used_by IS NULL AND NOT revoked AND expires_at>now() ORDER BY expires_at,id LIMIT 1 FOR UPDATE',
         [emailSchema.parse(email), token ? tokenHash(token) : null],

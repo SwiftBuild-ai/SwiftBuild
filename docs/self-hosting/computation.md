@@ -44,12 +44,12 @@ Structured logs contain event, job/attempt/request identifiers, state and stable
 
 ## Backup and restore
 
-Stop web and dispatcher writes before taking a consistent recovery snapshot. Run PostgreSQL tools inside the database container; retain `server.env` separately and privately. These commands create a backup and a new restore database without overwriting the running database:
+Prefer the [operator backup and recovery drill](recovery.md) commands for binary-safe artifacts, snapshot manifests, corruption checks and runtime-role verification. PostgreSQL dumps are consistent while writes continue; stop web and dispatcher writes when preparing a coordinated deployment cutover. Run PostgreSQL tools inside the database container; retain `server.env` separately and privately. These commands create a backup and a new restore database without overwriting the running database:
 
 ```sh
 docker compose --env-file server.env -f compose.yaml -f compose.server.yaml exec -T database pg_dump -U postgres -d swiftbuild -Fc > swiftbuild-backup.dump
 docker compose --env-file server.env -f compose.yaml -f compose.server.yaml exec -T database createdb -U postgres swiftbuild_restore_test
-docker compose --env-file server.env -f compose.yaml -f compose.server.yaml exec -T database pg_restore -U postgres -d swiftbuild_restore_test --no-owner < swiftbuild-backup.dump
+docker compose --env-file server.env -f compose.yaml -f compose.server.yaml exec -T database pg_restore -U postgres -d swiftbuild_restore_test --no-owner --single-transaction < swiftbuild-backup.dump
 ```
 
 Use a binary-safe shell for the dump; PowerShell users should run the commands through WSL/POSIX or direct PostgreSQL tools with `--file`, because older PowerShell redirection can alter binary output. Reprovision runtime privileges on the restored database, verify migration checksums, identity admission, revision exports, job results and bundle digests, then validate a replay using the original pinned computation environment. Database recovery includes analysis jobs and attempts; it does not back up browser drafts.

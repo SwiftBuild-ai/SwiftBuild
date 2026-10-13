@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { execFileSync, spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
-import { unlink, readFile } from 'node:fs/promises';
+import { unlink, readFile, rmdir } from 'node:fs/promises';
 import { Pool } from 'pg';
 import { connectBackend } from './backend';
 import { issueInvitation } from './identity';
@@ -10,7 +10,7 @@ import { createIdentity } from './identity';
 import { identityConfig } from './config';
 import { createProjectStore } from './projects';
 import { createJobStore } from './jobs';
-import { migrate } from './migrate';
+import { verifyBackup, restoreDatabase } from './recovery';
 import { parseDocument } from '@swiftbuild/architecture-schema';
 import { workspaceFor } from '@swiftbuild/project-format';
 const backend = connectBackend();
@@ -40,7 +40,7 @@ async function request(
 }
 const restore =
   'swiftbuild_restore_' + randomUUID().replaceAll('-', '') + '_test';
-const backup = '/tmp/swiftbuild-' + randomUUID() + '.dump';
+const backup = '/tmp/swiftbuild-' + randomUUID();
 let restorePool: Pool | undefined;
 let replayWorker: ReturnType<typeof spawn> | undefined;
 try {
@@ -146,26 +146,62 @@ try {
     'SELECT digest FROM sb_revisions WHERE project_id=$1',
     [project.id],
   );
-  // Trusted local database tools; passwords are passed through the child environment.
   const connection = new URL(process.env.DATABASE_URL!);
-  const pgEnv = {
-    ...process.env,
-    PGHOST: connection.hostname,
-    PGPORT: connection.port,
-    PGUSER: decodeURIComponent(connection.username),
-    PGPASSWORD: decodeURIComponent(connection.password),
+  const operator = (command: string, flags: string[], offline = false) => {
+    const env: NodeJS.ProcessEnv = {
+      ...process.env,
+      GOMAXPROCS: '2',
+      UV_THREADPOOL_SIZE: '2',
+    };
+    if (offline) delete env.DATABASE_URL;
+    const output = execFileSync(
+      process.execPath,
+      [
+        '--v8-pool-size=2',
+        '--max-old-space-size=256',
+        '--import',
+        import.meta.resolve('tsx'),
+        fileURLToPath(new URL('./cli.ts', import.meta.url)),
+        command,
+        ...flags,
+      ],
+      { env, stdio: 'pipe', timeout: 60000 },
+    ).toString();
+    return JSON.parse(output);
   };
-  execFileSync('pg_dump', ['-d', database, '-Fc', '--file', backup], {
-    env: pgEnv,
-    stdio: 'pipe',
-  });
-  await backend.pool.query(`CREATE DATABASE "${restore}"`);
-  execFileSync('pg_restore', ['-d', restore, '--no-owner', backup], {
-    env: pgEnv,
-    stdio: 'pipe',
-  });
+  if (operator('backup', ['--directory', backup]).event !== 'backup.created')
+    throw new Error('Operator backup failed.');
+  const manifest = await verifyBackup(backup);
+  if (
+    operator('verify-backup', ['--directory', backup], true).event !==
+    'backup.verified'
+  )
+    throw new Error('Offline backup verification failed.');
+  if (
+    operator('recovery-drill', ['--directory', backup, '--database', restore])
+      .event !== 'recovery.drill.passed'
+  )
+    throw new Error('Operator recovery drill failed.');
+  let refused = false;
+  try {
+    await restoreDatabase(connection.toString(), backup, restore);
+  } catch {
+    refused = true;
+  }
+  if (!refused) throw new Error('Existing restore target was overwritten.');
   connection.pathname = '/' + restore;
+  connection.username = 'swiftbuild_runtime';
+  connection.password = process.env.SWIFTBUILD_DB_RUNTIME_PASSWORD!;
   restorePool = new Pool({ connectionString: connection.toString() });
+  const permissions = (
+    await restorePool.query(
+      "SELECT has_schema_privilege(current_user,'public','CREATE') AS ddl,has_table_privilege(current_user,'public.sb_migrations','UPDATE') AS migration_write",
+    )
+  ).rows[0];
+  if (permissions.ddl || permissions.migration_write)
+    throw new Error('Restored runtime has excessive privileges.');
+  if (!manifest.sha256 || manifest.bytes <= 0)
+    throw new Error('Backup integrity evidence missing.');
   const restored = await restorePool.query(
     'SELECT digest FROM sb_revisions WHERE project_id=$1',
     [project.id],
@@ -180,7 +216,6 @@ try {
     restoredJob.rows[0]?.report.digest !== result.report.digest
   )
     throw new Error('Backup/restore evidence mismatch.');
-  await migrate(restorePool);
   const restoredIdentity = createIdentity(restorePool, identityConfig());
   const session = await restoredIdentity.session(new Headers({ cookie }));
   if (!session)
@@ -264,6 +299,8 @@ try {
         'python-child',
         'analysis-bundle',
         'database-backup-restore',
+        'snapshot-manifest-integrity',
+        'restored-runtime-role',
         'restored-admission-and-replay',
       ],
     }),
@@ -280,6 +317,8 @@ try {
     });
   await restorePool?.end();
   await backend.pool.query(`DROP DATABASE IF EXISTS "${restore}"`);
-  await unlink(backup).catch(() => {});
+  for (const file of ['database.dump', 'manifest.json', 'manifest.tmp'])
+    await unlink(backup + '/' + file).catch(() => {});
+  await rmdir(backup).catch(() => {});
   await backend.pool.end();
 }

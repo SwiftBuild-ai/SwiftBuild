@@ -24,6 +24,7 @@ services:
       SWIFTBUILD_AUTH_SECRET: '${SWIFTBUILD_AUTH_SECRET}'
       SWIFTBUILD_COMPUTATION_TOKEN: '${SWIFTBUILD_COMPUTATION_TOKEN}'
       SWIFTBUILD_DB_RUNTIME_PASSWORD: '${SWIFTBUILD_DB_RUNTIME_PASSWORD:?Set the private runtime password}'
+      SWIFTBUILD_RELEASE_IMAGE: '${SWIFTBUILD_RELEASE_IMAGE:-unrecorded}'
     command: ['sh', 'tooling/scripts/provision-server.sh']
     depends_on:
       database:

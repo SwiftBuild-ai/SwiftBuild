@@ -81,6 +81,54 @@ test('server editing preserves revisions, stale/offline recovery and complete lo
       exact: true,
     }),
   ).toBeVisible();
+  const recoveryBackend = connectBackend({
+    DATABASE_URL: process.env.SWIFTBUILD_BROWSER_DATABASE_URL,
+    SWIFTBUILD_URL: 'http://localhost:3200',
+    SWIFTBUILD_AUTH_SECRET: process.env.SWIFTBUILD_BROWSER_SECRET,
+    SWIFTBUILD_ALLOW_LOCAL_HTTP: '1',
+  });
+  const creationScope = (
+    await recoveryBackend.pool.query(
+      'SELECT workspace_id,created_by FROM sb_projects WHERE id=$1',
+      [committedCreationId],
+    )
+  ).rows[0];
+  try {
+    await recoveryBackend.pool.query(
+      'DELETE FROM sb_members WHERE workspace_id=$1 AND user_id=$2',
+      [creationScope.workspace_id, creationScope.created_by],
+    );
+    await page.reload();
+    await expect(
+      page.getByRole('button', {
+        name: 'Export pending creation archive',
+        exact: true,
+      }),
+    ).toBeVisible();
+    const deniedCreation = page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === '/api/v1/projects' &&
+        response.request().method() === 'POST',
+    );
+    await page
+      .getByRole('button', { name: 'Retry project creation', exact: true })
+      .click();
+    expect((await deniedCreation).status()).toBe(404);
+    await expect(page.locator('.account-error')).toBeVisible();
+    await expect(
+      page.getByRole('button', {
+        name: 'Export pending creation archive',
+        exact: true,
+      }),
+    ).toBeVisible();
+  } finally {
+    await recoveryBackend.pool.query(
+      "INSERT INTO sb_members(workspace_id,user_id,role) VALUES ($1,$2,'owner') ON CONFLICT DO NOTHING",
+      [creationScope.workspace_id, creationScope.created_by],
+    );
+    await recoveryBackend.pool.end();
+  }
+  await page.reload();
   await page
     .getByRole('button', { name: 'Retry project creation', exact: true })
     .click();

@@ -1,9 +1,26 @@
 import { describe, it, expect, vi } from 'vitest';
-import { IDBFactory } from 'fake-indexeddb';
+import { IDBFactory, IDBKeyRange } from 'fake-indexeddb';
 import { workspaceFor } from '@swiftbuild/canvas/workspace';
 import { blankDocument } from '@swiftbuild/components-core';
 import { ProjectCreation } from './project-creation';
 describe('durable creation intents', () => {
+  it('lists only actor-scoped recovery workspace keys, including unavailable server memberships', async () => {
+    vi.stubGlobal('IDBKeyRange', IDBKeyRange);
+    try {
+      const factory = new IDBFactory(),
+        workspace = crypto.randomUUID();
+      const owner = new ProjectCreation('owner', factory);
+      await owner.prepare(workspace, workspaceFor(blankDocument()));
+      await new ProjectCreation('another', factory).prepare(
+        crypto.randomUUID(),
+        workspaceFor(blankDocument()),
+      );
+      expect(await owner.workspaceIds()).toEqual([workspace]);
+      expect((await owner.read(workspace))?.workspaceId).toBe(workspace);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
   it('persists before transport, reloads the original request, and clears only a confirmed response', async () => {
     const factory = new IDBFactory(),
       workspace = crypto.randomUUID();

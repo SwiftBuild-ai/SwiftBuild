@@ -49,6 +49,24 @@ export function ProjectList({
     [error, setError] = useState(''),
     [name, setName] = useState('');
   const [pending, setPending] = useState<CreationIntent | null>(null);
+  const [recoveryWorkspaces, setRecoveryWorkspaces] = useState<string[]>([]);
+  useEffect(() => {
+    let active = true;
+    void creation
+      .workspaceIds()
+      .then((ids) => {
+        if (active) {
+          setRecoveryWorkspaces(ids);
+          setSelected((previous) => previous || ids[0] || '');
+        }
+      })
+      .catch((failure) => {
+        if (active) setError(failure.message);
+      });
+    return () => {
+      active = false;
+    };
+  }, [creation]);
   useEffect(() => {
     let active = true;
     setInteractive(false);
@@ -69,7 +87,9 @@ export function ProjectList({
   }, [creation, selected]);
   const file = useRef<HTMLInputElement>(null);
   const generation = useRef(0);
-  const canWrite = workspaces.find((w) => w.id === selected)?.role !== 'viewer';
+  const canWrite = ['owner', 'editor'].includes(
+    workspaces.find((w) => w.id === selected)?.role ?? '',
+  );
   useEffect(() => {
     const current = ++generation.current;
     setProjects([]);
@@ -111,7 +131,20 @@ export function ProjectList({
     }
   }
   async function submitArchive(archive: ProjectArchive) {
-    const candidate = await creation.prepare(selected, archive);
+    let candidate: CreationIntent;
+    try {
+      candidate = await creation.prepare(selected, archive);
+    } catch (failure) {
+      const retained = await creation.read(selected);
+      if (retained) {
+        setPending(retained);
+        throw new Error(
+          'An unconfirmed creation already exists in this workspace. Retry or export its original archive.',
+          { cause: failure },
+        );
+      }
+      throw failure;
+    }
     setPending(candidate);
     const result = await creation.submit(candidate);
     window.location.assign('/projects/' + result.id);
@@ -135,6 +168,13 @@ export function ProjectList({
                 {w.name} · {w.role}
               </option>
             ))}
+            {recoveryWorkspaces
+              .filter((id) => !workspaces.some((w) => w.id === id))
+              .map((id) => (
+                <option key={id} value={id}>
+                  Creation recovery · {id}
+                </option>
+              ))}
           </select>
         </label>
         {workspaceCursor && (
@@ -253,7 +293,9 @@ export function ProjectList({
         <p className="project-note">
           {canWrite
             ? 'Import and copy actions upload a complete archive only when selected. The saved browser draft stays intact; unsaved edits in another tab are not included.'
-            : 'Viewer access: open projects for inspection and local previews. Server saves are disabled.'}
+            : workspaces.some((w) => w.id === selected)
+              ? 'Viewer access: open projects for inspection and local previews. Server saves are disabled.'
+              : 'Workspace membership is unavailable. Export local creation recovery; retry requires current server authorization.'}
         </p>
       )}
       {pending && (

@@ -1,6 +1,6 @@
 # SwiftBuild current status
 
-Implementation inventory updated October 13, 2026. Server editor implementation was verified at `4992e59`, with database-backed browser verification at `7a617bc`. The server API foundation at `8603007`, account delivery and earlier October 11 documentation baseline at `20dc9ee` remain recorded below. This page distinguishes source-backed capabilities from dated execution results and does not certify production readiness.
+Implementation inventory updated October 13, 2026. Durable creation recovery, immutable restoration and bootstrap rotation are recorded in the foundation verification entries below. Server editor implementation was verified at `4992e59`, with database-backed browser verification at `7a617bc`. The server API foundation at `8603007`, account delivery and earlier October 11 documentation baseline at `20dc9ee` remain recorded below. This page distinguishes source-backed capabilities from dated execution results and does not certify production readiness.
 
 ## Capability inventory
 
@@ -57,7 +57,7 @@ Local verification passed formatting, lint/package boundaries, type checks, 119 
 
 The optional full-server Compose smoke passed with one-CPU/512 MiB computation limits, bounded process counts, explicit migrations and a separate runtime database role. It exercised authenticated HTTP submission, the isolated Python child, durable reports, analysis bundles, database dump/restore into an isolated test database, restored admission/session authorization, and numerical replay. The test deployment and restore database were removed afterward. Docker was reachable through the local Linux environment; its Windows endpoint remained unavailable. Initial health-check failures from excessive Node threads were corrected with direct startup and bounded thread pools. An earlier concurrent browser run collided on artifact cleanup; the suites passed when run sequentially.
 
-This completes the focused integration, not milestones 1 or 6. Project-creation retry recovery across reload, revision restoration, bootstrap-link rotation, outage timelines, richer calibration and the other roadmap gates remain unfinished. Worker topology currently uses one dispatcher/computation pair; retention policy, production recovery certification, independent security review and full accessibility certification remain unverified. See [models](engineering/analysis.md), [deployment](self-hosting/computation.md) and [ADR 0009](adr/0009-engineering-computation-service.md).
+At this integration stage, milestones 1 and 6 remained open. Subsequent foundation entries below implement project-creation retry recovery, revision restoration and bootstrap-link rotation; outage timelines, richer calibration and other roadmap gates remain unfinished. Worker topology currently uses one dispatcher/computation pair; retention policy, production recovery certification, independent security review and full accessibility certification remain unverified. See [models](engineering/analysis.md), [deployment](self-hosting/computation.md) and [ADR 0009](adr/0009-engineering-computation-service.md).
 
 ## Documentation policy
 

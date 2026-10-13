@@ -128,6 +128,39 @@ export class ProjectCreation {
       },
     );
   }
+  async workspaceIds(): Promise<string[]> {
+    const db = await this.open();
+    try {
+      return await new Promise((resolve, reject) => {
+        const prefix = JSON.stringify([this.userId]).slice(0, -1) + ',';
+        const tx = db.transaction('intents', 'readonly');
+        const request = tx
+          .objectStore('intents')
+          .openKeyCursor(IDBKeyRange.bound(prefix, prefix + '\uffff'));
+        const ids: string[] = [];
+        request.onsuccess = () => {
+          const cursor = request.result;
+          if (!cursor) return;
+          try {
+            const [userId, workspaceId] = JSON.parse(String(cursor.key));
+            if (userId !== this.userId || !uuid.test(workspaceId)) {
+              tx.abort();
+              return;
+            }
+            ids.push(workspaceId);
+            cursor.continue();
+          } catch {
+            tx.abort();
+          }
+        };
+        tx.oncomplete = () => resolve(ids);
+        tx.onabort = tx.onerror = () =>
+          reject(tx.error ?? new Error('Creation recovery listing failed.'));
+      });
+    } finally {
+      db.close();
+    }
+  }
   async prepare(workspaceId: string, archive: ProjectArchive) {
     const intent = checked({
       version: 1,

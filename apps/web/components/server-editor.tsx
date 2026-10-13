@@ -19,7 +19,12 @@ import { api, downloadArchive } from '../client/project-api';
 import { AccountShell } from './account-shell';
 import { ProjectCreation } from '../client/project-creation';
 import { analysisAdapter } from '../client/analysis-api';
-type Revision = { revision: number; createdAt: string; actorId: string };
+type Revision = {
+  revision: number;
+  createdAt: string;
+  actorId: string;
+  sourceRevision?: number | null;
+};
 export function ServerEditor({
   project,
   userId,
@@ -32,6 +37,8 @@ export function ServerEditor({
       new ServerWorkspace(
         project,
         new BrowserProjectRecovery(userId + ':' + project.id),
+        undefined,
+        userId,
       ),
   );
   const [ready, setReady] = useState(false),
@@ -53,6 +60,8 @@ export function ServerEditor({
   const [creation] = useState(() => new ProjectCreation(userId));
   const [history, setHistory] = useState<Revision[] | null>(null),
     [before, setBefore] = useState<number | null>(null);
+  const [preview, setPreview] = useState<ServerProject | null>(null);
+  const [restoring, setRestoring] = useState(false);
   const onArchiveChange = useCallback((archive: ProjectArchive) => {
     latest.current = archive;
     setDirty(!sameArchive(archive, confirmed.current));
@@ -143,6 +152,21 @@ export function ServerEditor({
               <Button onClick={() => downloadArchive(recovery.archive)}>
                 Export recovery archive
               </Button>
+              {project.role !== 'viewer' &&
+                recovery.pending?.kind === 'restore' && (
+                  <Button
+                    disabled={busy}
+                    onClick={() =>
+                      void run(async () => {
+                        await adapter.retryRestore();
+                        window.location.reload();
+                      })
+                    }
+                  >
+                    Retry restoration of revision{' '}
+                    {recovery.pending.sourceRevision}
+                  </Button>
+                )}
               {project.role !== 'viewer' && (
                 <Button
                   disabled={busy}
@@ -170,7 +194,7 @@ export function ServerEditor({
                   void run(async () => {
                     await adapter.openServerRevision();
                     setRecovery(null);
-                    setReady(true);
+                    window.location.reload();
                   })
                 }
               >
@@ -227,29 +251,53 @@ export function ServerEditor({
           </Button>
         </div>
       )}
-      <Workbench
-        analysis={analysis}
-        analysisDirty={dirty}
-        initialArchive={project.archive}
-        storage={storage}
-        onArchiveChange={onArchiveChange}
-      />
+      {!restoring && (
+        <Workbench
+          analysis={analysis}
+          analysisDirty={dirty}
+          initialArchive={project.archive}
+          storage={storage}
+          onArchiveChange={onArchiveChange}
+        />
+      )}
       {history && (
         <Modal
           open={true}
           onOpenChange={(open) => {
-            if (!open) setHistory(null);
+            if (!open && !busy) {
+              setHistory(null);
+              setPreview(null);
+            }
           }}
           title="Saved revisions"
-          description="Each revision is immutable. Export a prior archive without replacing your current work."
+          description="Inspect or export an immutable archive. Restoration creates a new attributed revision."
         >
-          <ul className="project-list">
+          <ul className="project-list revision-history-list">
             {history.map((item) => (
               <li key={item.revision}>
                 <span>
                   Revision {item.revision} ·{' '}
                   {new Date(item.createdAt).toLocaleString()}
+                  {item.sourceRevision
+                    ? ` · restored from revision ${item.sourceRevision}`
+                    : ''}
                 </span>
+                <Button
+                  disabled={busy}
+                  onClick={() =>
+                    void run(async () => {
+                      const snapshot = await api<ServerProject>(
+                        `projects/${project.id}?revision=${item.revision}`,
+                      );
+                      setPreview({
+                        ...snapshot,
+                        archive: validateArchive(snapshot.archive),
+                      });
+                    })
+                  }
+                >
+                  Preview revision {item.revision}
+                </Button>
                 <Button
                   disabled={busy}
                   onClick={() =>
@@ -269,6 +317,65 @@ export function ServerEditor({
               </li>
             ))}
           </ul>
+          {preview && (
+            <section aria-label={`Preview of revision ${preview.revision}`}>
+              <h3>
+                Revision {preview.revision}:{' '}
+                {preview.archive.document.project.name}
+              </h3>
+              <p>
+                {preview.archive.document.architecture.name} ·{' '}
+                {preview.archive.document.nodes.length} components ·{' '}
+                {preview.archive.document.edges.length} connections ·{' '}
+                {preview.archive.checkpoints.length} checkpoints
+              </p>
+              <ul>
+                {preview.archive.document.nodes.map((node) => (
+                  <li key={node.id}>{node.name || node.id}</li>
+                ))}
+              </ul>
+              <p>
+                Restore revision {preview.revision} as a new revision after
+                current revision {revision}. Earlier history and analysis
+                reports remain attached to their original revisions.
+              </p>
+              {dirty && (
+                <p role="status">
+                  Preserve unsaved work and resolve pending saves before
+                  restoring. Export current work or complete its save first.
+                </p>
+              )}
+              {project.role !== 'viewer' && (
+                <Button
+                  disabled={busy || dirty}
+                  onClick={() =>
+                    void run(async () => {
+                      if (!sameArchive(latest.current, confirmed.current))
+                        throw new Error(
+                          'Preserve unsaved work before restoring.',
+                        );
+                      setRestoring(true);
+                      try {
+                        await adapter.restore(
+                          preview.revision,
+                          preview.archive,
+                        );
+                        window.location.reload();
+                      } catch (failure) {
+                        setRestoring(false);
+                        const retained = await adapter.inspectRecovery();
+                        setRecovery(retained);
+                        if (retained) setReady(false);
+                        throw failure;
+                      }
+                    })
+                  }
+                >
+                  Restore revision {preview.revision} as a new revision
+                </Button>
+              )}
+            </section>
+          )}
           {before && (
             <Button
               disabled={busy}
@@ -289,7 +396,13 @@ export function ServerEditor({
               Older revisions
             </Button>
           )}
-          <Button onClick={() => setHistory(null)}>
+          <Button
+            disabled={busy}
+            onClick={() => {
+              setHistory(null);
+              setPreview(null);
+            }}
+          >
             Close revision history
           </Button>
         </Modal>

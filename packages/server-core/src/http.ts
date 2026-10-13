@@ -345,6 +345,38 @@ export function createApi(backend: {
           return reply(project, 200, { etag: `"${project.revision}"` });
         }
         if (
+          path[2] === 'restore' &&
+          path.length === 3 &&
+          request.method === 'POST'
+        ) {
+          const expectedVersion = expected(request);
+          const body = z
+            .object({
+              sourceRevision: version,
+              operationId: uuid,
+              expectedActorId: z.string().min(1).max(128).optional(),
+            })
+            .strict()
+            .parse(await boundedJson(request, 4096));
+          if (
+            body.expectedActorId !== undefined &&
+            body.expectedActorId !== userId
+          )
+            throw new HttpError(
+              403,
+              'ACTOR_CHANGED',
+              'The signed-in account changed. Restore recovery is preserved.',
+            );
+          const project = await backend.projects.restoreProject(
+            userId,
+            projectId,
+            expectedVersion,
+            body.sourceRevision,
+            body.operationId,
+          );
+          return reply(project, 200, { etag: `"${project.revision}"` });
+        }
+        if (
           path[2] === 'revisions' &&
           path.length === 3 &&
           request.method === 'GET'

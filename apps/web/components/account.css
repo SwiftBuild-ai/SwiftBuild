@@ -195,6 +195,17 @@
   line-height: 1.8;
   overflow-wrap: anywhere;
 }
+.revision-history-list li {
+  display: flex;
+  flex-wrap: wrap;
+}
+.revision-history-list li > span {
+  flex: 1 0 100%;
+}
+.revision-history-list button {
+  white-space: normal;
+  max-width: 100%;
+}
 @media (max-width: 480px) {
   .account-shell {
     padding: 20px 16px;

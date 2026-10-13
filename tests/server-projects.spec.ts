@@ -383,6 +383,141 @@ test('viewer edits remain local while the server rejects writes', async ({
     }),
   ).toHaveCount(0);
 });
+test('revision restoration previews history, survives a lost response and preserves a stale conflict', async ({
+  page,
+  context,
+}, info) => {
+  page.on('dialog', (dialog) => dialog.accept());
+  const signed = await context.request.post('/api/auth/sign-in/email', {
+    headers: { origin: 'http://localhost:3200' },
+    data: {
+      email: process.env.SWIFTBUILD_BROWSER_EMAIL!,
+      password: 'swiftbuild-browser-test-password!',
+    },
+  });
+  expect(signed.status()).toBe(200);
+  const workspaces = (
+    await (await context.request.get('/api/v1/workspaces')).json()
+  ).items;
+  const archive = workspaceFor(sampleDocument());
+  archive.document.project.name = 'Restore browser fixture';
+  const project = await (
+    await context.request.post('/api/v1/projects', {
+      headers: { origin: 'http://localhost:3200' },
+      data: {
+        workspaceId: workspaces[0].id,
+        operationId: randomUUID(),
+        archive,
+      },
+    })
+  ).json();
+  const later = structuredClone(archive);
+  later.document.architecture.name = 'Later revision';
+  expect(
+    (
+      await context.request.put(`/api/v1/projects/${project.id}`, {
+        headers: { origin: 'http://localhost:3200', 'if-match': '"1"' },
+        data: { operationId: randomUUID(), archive: later },
+      })
+    ).status(),
+  ).toBe(200);
+  await page.goto(`/projects/${project.id}`);
+  await expect(
+    page.getByRole('status').filter({ hasText: 'Saved to server' }),
+  ).toBeVisible();
+  await page
+    .getByRole('button', { name: 'Revision history', exact: true })
+    .click();
+  await page
+    .getByRole('button', { name: 'Preview revision 1', exact: true })
+    .click();
+  await expect(
+    page.getByRole('region', { name: 'Preview of revision 1' }),
+  ).toContainText('4 components');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({
+    path: info.outputPath('revision-restore-narrow.png'),
+  });
+  await page.route(
+    `**/api/v1/projects/${project.id}/restore`,
+    async (route) => {
+      await route.fetch();
+      await route.abort('failed');
+    },
+  );
+  const restoreButton = page.getByRole('button', {
+    name: 'Restore revision 1 as a new revision',
+    exact: true,
+  });
+  await restoreButton.focus();
+  await page.keyboard.press('Enter');
+  await expect(
+    page.getByRole('heading', { name: 'Preserve your recovery copy' }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('button', {
+      name: 'Retry restoration of revision 1',
+      exact: true,
+    }),
+  ).toBeEnabled();
+  await page.unroute(`**/api/v1/projects/${project.id}/restore`);
+  await page.reload();
+  await page
+    .getByRole('button', {
+      name: 'Retry restoration of revision 1',
+      exact: true,
+    })
+    .click();
+  await expect(
+    page.getByText('Server project · revision 3', { exact: true }),
+  ).toBeVisible();
+  const restored = await (
+    await context.request.get(`/api/v1/projects/${project.id}`)
+  ).json();
+  expect(restored.archive).toEqual(archive);
+  await page
+    .getByRole('button', { name: 'Revision history', exact: true })
+    .click();
+  await page
+    .getByRole('button', { name: 'Preview revision 2', exact: true })
+    .click();
+  const intervening = structuredClone(archive);
+  intervening.document.architecture.name = 'Intervening writer';
+  expect(
+    (
+      await context.request.put(`/api/v1/projects/${project.id}`, {
+        headers: { origin: 'http://localhost:3200', 'if-match': '"3"' },
+        data: { operationId: randomUUID(), archive: intervening },
+      })
+    ).status(),
+  ).toBe(200);
+  await page
+    .getByRole('button', {
+      name: 'Restore revision 2 as a new revision',
+      exact: true,
+    })
+    .click();
+  await expect(
+    page.getByRole('heading', { name: 'Preserve your recovery copy' }),
+  ).toBeVisible();
+  expect(
+    (await (await context.request.get(`/api/v1/projects/${project.id}`)).json())
+      .archive,
+  ).toEqual(intervening);
+  await expect(
+    page.getByRole('button', { name: 'Export recovery archive', exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole('button', {
+      name: 'Discard local recovery and open server revision',
+      exact: true,
+    })
+    .click();
+  await expect(
+    page.getByRole('status').filter({ hasText: 'Saved to server' }),
+  ).toBeVisible();
+});
+
 test('engineering jobs survive reload and export/import through the workbench', async ({
   page,
   context,

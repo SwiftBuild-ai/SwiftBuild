@@ -138,6 +138,38 @@ describe.skipIf(!database)('authenticated project HTTP boundary', () => {
     expect(response.status).toBe(403);
     expect((await pool.query('SELECT id FROM sb_projects')).rowCount).toBe(0);
   });
+  it('requires strong revision tags for restore and returns the original revision on retry', async () => {
+    const { project, archive } = await create();
+    const operationId = randomUUID();
+    const path = `projects/${project.id}/restore`,
+      body = { sourceRevision: 1, operationId };
+    expect((await request(path, 'POST', body)).status).toBe(428);
+    expect(
+      (await request(path, 'POST', body, ownerCookie, { 'if-match': 'W/"1"' }))
+        .status,
+    ).toBe(400);
+    const response = await request(path, 'POST', body, ownerCookie, {
+      'if-match': '"1"',
+    });
+    expect(response.status).toBe(200);
+    expect(response.headers.get('etag')).toBe('"2"');
+    expect((await response.json()).archive).toEqual(archive);
+    expect(
+      (await request(path, 'POST', body, ownerCookie, { 'if-match': '"1"' }))
+        .status,
+    ).toBe(200);
+    expect(
+      (
+        await request(
+          path,
+          'POST',
+          { ...body, operationId: randomUUID() },
+          ownerCookie,
+          { 'if-match': '"1"' },
+        )
+      ).status,
+    ).toBe(412);
+  });
   it('creates, saves, reconnects and reopens a project with immutable revisions and ETags', async () => {
     const { project, archive } = await create();
     const changed = structuredClone(archive);

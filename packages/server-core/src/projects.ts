@@ -194,7 +194,7 @@ export function createProjectStore(pool: Pool) {
           return snapshot(client, row.id, workspaceId, 1);
         }
         await client.query(
-          'INSERT INTO sb_revisions (project_id, revision, operation_id, archive, digest, created_by) VALUES ($1,1,$2,$3,$4,$5)',
+          "INSERT INTO sb_revisions (project_id, revision, operation_id, archive, digest, created_by, operation_kind) VALUES ($1,1,$2,$3,$4,$5,'create')",
           [projectId, operationId, JSON.stringify(archive), digest, userId],
         );
         await client.query(
@@ -254,15 +254,20 @@ export function createProjectStore(pool: Pool) {
         );
         const previous = await client.query<{
           revision: number;
+          operation_kind: string;
           digest: string;
           created_by: string;
         }>(
-          'SELECT revision, digest, created_by FROM sb_revisions WHERE project_id=$1 AND operation_id=$2',
+          'SELECT revision, digest, created_by, operation_kind FROM sb_revisions WHERE project_id=$1 AND operation_id=$2',
           [projectId, operationId],
         );
         const prior = previous.rows[0];
         if (prior) {
-          if (prior.created_by !== userId || prior.digest !== digest)
+          if (
+            prior.operation_kind === 'restore' ||
+            prior.created_by !== userId ||
+            prior.digest !== digest
+          )
             throw new ProjectError(
               409,
               'Save key was already used for another request.',
@@ -302,6 +307,92 @@ export function createProjectStore(pool: Pool) {
           userId,
           workspaceId,
           'project.saved',
+          projectId,
+          next,
+        );
+        return { id: projectId, workspaceId, revision: next, archive };
+      });
+    },
+    async restoreProject(
+      userId: string,
+      projectId: string,
+      expectedRevision: number,
+      sourceRevision: number,
+      operationId: string,
+    ) {
+      actor.parse(userId);
+      id.parse(projectId);
+      id.parse(operationId);
+      revision.parse(expectedRevision);
+      revision.parse(sourceRevision);
+      return transaction(pool, async (client) => {
+        const { workspaceId, current } = await projectAccess(
+          client,
+          userId,
+          projectId,
+          true,
+        );
+        const prior = (
+          await client.query<{
+            revision: number;
+            created_by: string;
+            operation_kind: string;
+            source_revision: number;
+            expected_revision: number;
+          }>(
+            'SELECT revision,created_by,operation_kind,source_revision,expected_revision FROM sb_revisions WHERE project_id=$1 AND operation_id=$2',
+            [projectId, operationId],
+          )
+        ).rows[0];
+        if (prior) {
+          if (
+            prior.created_by !== userId ||
+            prior.operation_kind !== 'restore' ||
+            prior.source_revision !== sourceRevision ||
+            prior.expected_revision !== expectedRevision
+          )
+            throw new ProjectError(
+              409,
+              'Restore key was already used for another request.',
+            );
+          return snapshot(client, projectId, workspaceId, prior.revision);
+        }
+        if (current !== expectedRevision)
+          throw new ProjectError(
+            409,
+            'Project changed. Preserve your work before reopening the current revision.',
+            'REVISION_CONFLICT',
+          );
+        const source = await snapshot(
+          client,
+          projectId,
+          workspaceId,
+          sourceRevision,
+        );
+        const { archive, digest } = checked(source.archive);
+        const next = current + 1;
+        await client.query(
+          "INSERT INTO sb_revisions (project_id,revision,operation_id,archive,digest,created_by,operation_kind,source_revision,expected_revision) VALUES ($1,$2,$3,$4,$5,$6,'restore',$7,$8)",
+          [
+            projectId,
+            next,
+            operationId,
+            JSON.stringify(archive),
+            digest,
+            userId,
+            sourceRevision,
+            expectedRevision,
+          ],
+        );
+        await client.query(
+          'UPDATE sb_projects SET current_revision=$2,name=$3,updated_at=now() WHERE id=$1',
+          [projectId, next, name.parse(archive.document.project.name)],
+        );
+        await audit(
+          client,
+          userId,
+          workspaceId,
+          'project.restored',
           projectId,
           next,
         );
@@ -357,13 +448,15 @@ export function createProjectStore(pool: Pool) {
           revision: number;
           created_by: string;
           created_at: Date;
+          source_revision: number | null;
         }>(
-          'SELECT revision, created_by, created_at FROM sb_revisions WHERE project_id=$1 AND ($2::integer IS NULL OR revision < $2) ORDER BY revision DESC LIMIT 100',
+          'SELECT revision, created_by, created_at, source_revision FROM sb_revisions WHERE project_id=$1 AND ($2::integer IS NULL OR revision < $2) ORDER BY revision DESC LIMIT 100',
           [projectId, before ?? null],
         );
         return result.rows.map((row) => ({
           revision: row.revision,
           actorId: row.created_by,
+          sourceRevision: row.source_revision,
           createdAt: row.created_at.toISOString(),
         }));
       });

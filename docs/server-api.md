@@ -47,3 +47,9 @@ Responses are not cached. Application errors use `{ error: { code, message }, re
 The web host persists one unresolved creation intent per signed-in user and workspace in IndexedDB before submitting new projects, imported archives, saved drafts or recovery copies. Reload offers explicit retry and export; retry retains the original archive and operation ID. Storage failure prevents submission. A confirmed response clears only the matching operation. Browser site-data deletion removes recovery, so export before clearing it.
 
 Creation requests may include `expectedActorId` to reject an account switch in an older tab. This field is a precondition; the verified session remains the actor and permissions are still enforced by the storage transaction.
+
+### Revision restoration
+
+`POST /api/v1/projects/PROJECT_ID/restore` accepts `{ "sourceRevision": 1, "operationId": "UUID" }` with one strong `If-Match` tag for the current revision. Owners/editors may restore. The complete saved archive becomes a new attributed revision, even for identical content; older revisions and analysis results remain unchanged. Responses contain the saved project and its ETag. A missing tag returns 428, malformed tags return 400, and a stale base returns 412. Exact operation retries return their original result; conflicting reuse returns 409. Optional `expectedActorId` rejects account changes without supplying authorization.
+
+History provides preview, export and explicit restoration. Dirty edits and unresolved saves must be preserved first. Restore intents use local recovery version 2; version 1 recovery continues to load. Lost responses retain the original source, base and operation for explicit retry after reload. An intervening server save is never silently overwritten.

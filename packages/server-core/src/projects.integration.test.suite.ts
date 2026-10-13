@@ -242,6 +242,9 @@ describe.skipIf(!url)(
         await expect(
           store.saveProject('owner', project.id, 1, changed, randomUUID()),
         ).rejects.toThrow('test audit interruption');
+        await expect(
+          store.restoreProject('owner', project.id, 1, 1, randomUUID()),
+        ).rejects.toThrow('test audit interruption');
         expect((await store.readProject('owner', project.id)).archive).toEqual(
           original,
         );
@@ -253,6 +256,164 @@ describe.skipIf(!url)(
       }
     });
 
+    it('restores complete immutable archives with durable attribution and fenced idempotency', async () => {
+      const store = createProjectStore(pool),
+        workspace = await store.createWorkspace('owner', 'Engineering');
+      const original = archive(),
+        project = await store.createProject(
+          'owner',
+          workspace.id,
+          original,
+          randomUUID(),
+        );
+      const changed = structuredClone(original);
+      changed.document.architecture.name = 'Changed';
+      await store.saveProject('owner', project.id, 1, changed, randomUUID());
+      const operation = randomUUID();
+      const restored = await store.restoreProject(
+        'owner',
+        project.id,
+        2,
+        1,
+        operation,
+      );
+      expect(restored).toMatchObject({ revision: 3, archive: original });
+      expect(
+        (await store.restoreProject('owner', project.id, 2, 1, operation))
+          .revision,
+      ).toBe(3);
+      await expect(
+        store.restoreProject('owner', project.id, 3, 1, operation),
+      ).rejects.toMatchObject({ status: 409 });
+      await expect(
+        store.restoreProject('owner', project.id, 2, 2, operation),
+      ).rejects.toMatchObject({ status: 409 });
+      await expect(
+        store.saveProject('owner', project.id, 3, original, operation),
+      ).rejects.toMatchObject({ status: 409 });
+      expect(
+        (await store.restoreProject('owner', project.id, 3, 3, randomUUID()))
+          .revision,
+      ).toBe(4);
+      expect((await store.readProject('owner', project.id, 2)).archive).toEqual(
+        changed,
+      );
+      const row = (
+        await pool.query(
+          'SELECT operation_kind,source_revision,expected_revision FROM sb_revisions WHERE project_id=$1 AND revision=3',
+          [project.id],
+        )
+      ).rows[0];
+      expect(row).toEqual({
+        operation_kind: 'restore',
+        source_revision: 1,
+        expected_revision: 2,
+      });
+      expect((await store.listRevisions('owner', project.id))[1]).toMatchObject(
+        { revision: 3, sourceRevision: 1, actorId: 'owner' },
+      );
+      expect(
+        (
+          await pool.query(
+            "SELECT revision FROM sb_audit_events WHERE project_id=$1 AND action='project.restored'",
+            [project.id],
+          )
+        ).rows,
+      ).toHaveLength(2);
+      await expect(
+        store.restoreProject('owner', project.id, 4, 99, randomUUID()),
+      ).rejects.toMatchObject({ status: 404 });
+    });
+    it('enforces restore permissions and allows exactly one competing restore or save', async () => {
+      const store = createProjectStore(pool),
+        workspace = await store.createWorkspace('owner', 'Engineering');
+      const original = archive(),
+        project = await store.createProject(
+          'owner',
+          workspace.id,
+          original,
+          randomUUID(),
+        );
+      await pool.query(
+        "INSERT INTO sb_members VALUES ($1,'reader','viewer'),($1,'writer','editor')",
+        [workspace.id],
+      );
+      await expect(
+        store.restoreProject('reader', project.id, 1, 1, randomUUID()),
+      ).rejects.toMatchObject({ status: 403 });
+      await expect(
+        store.restoreProject('outsider', project.id, 1, 1, randomUUID()),
+      ).rejects.toMatchObject({ status: 404 });
+      const changed = structuredClone(original);
+      changed.document.architecture.name = 'Concurrent';
+      const outcomes = await Promise.allSettled([
+        store.restoreProject('writer', project.id, 1, 1, randomUUID()),
+        store.saveProject('owner', project.id, 1, changed, randomUUID()),
+      ]);
+      expect(outcomes.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+      expect((await store.readProject('owner', project.id)).revision).toBe(2);
+      await pool.query(
+        "UPDATE sb_admitted_users SET active=false WHERE user_id='writer'",
+      );
+      await expect(
+        store.restoreProject('writer', project.id, 2, 1, randomUUID()),
+      ).rejects.toMatchObject({ status: 404 });
+      await pool.query(
+        "DELETE FROM sb_members WHERE workspace_id=$1 AND user_id='owner'",
+        [workspace.id],
+      );
+      await expect(
+        store.restoreProject('owner', project.id, 2, 1, randomUUID()),
+      ).rejects.toMatchObject({ status: 404 });
+    });
+    it('upgrades pre-restoration rows without changing archives or digests', async () => {
+      const upgradeSchema = schema + '_upgrade';
+      await admin.query(`CREATE SCHEMA "${upgradeSchema}"`);
+      const upgrade = new Pool({
+        ...options,
+        options: `-c search_path=${upgradeSchema}`,
+      });
+      try {
+        await migrate(upgrade, migrations.slice(0, 3));
+        const workspace = randomUUID(),
+          project = randomUUID(),
+          input = archive();
+        await upgrade.query(
+          'INSERT INTO sb_workspaces(id,name) VALUES ($1,$2)',
+          [workspace, 'Upgrade'],
+        );
+        await upgrade.query(
+          'INSERT INTO sb_projects(id,workspace_id,name,created_by,creation_key,current_revision) VALUES ($1,$2,$3,$4,$5,1)',
+          [project, workspace, 'Upgrade', 'owner', randomUUID()],
+        );
+        await upgrade.query(
+          'INSERT INTO sb_revisions(project_id,revision,operation_id,archive,digest,created_by) VALUES ($1,1,$2,$3,$4,$5)',
+          [
+            project,
+            randomUUID(),
+            JSON.stringify(input),
+            'original-digest',
+            'owner',
+          ],
+        );
+        await migrate(upgrade);
+        expect(
+          (
+            await upgrade.query(
+              'SELECT archive,digest,operation_kind,source_revision FROM sb_revisions',
+            )
+          ).rows[0],
+        ).toEqual({
+          archive: input,
+          digest: 'original-digest',
+          operation_kind: 'create',
+          source_revision: null,
+        });
+      } finally {
+        await upgrade.end();
+        await admin.query(`DROP SCHEMA "${upgradeSchema}" CASCADE`);
+      }
+    });
     it('rejects edited migration history and rolls back interrupted schema changes', async () => {
       await expect(
         migrate(pool, [
@@ -263,7 +424,7 @@ describe.skipIf(!url)(
         migrate(pool, [
           ...migrations,
           {
-            id: '0003-interrupted',
+            id: '0005-interrupted',
             sql: 'CREATE TABLE sb_interrupted (id integer); SELECT 1/0;',
           },
         ]),

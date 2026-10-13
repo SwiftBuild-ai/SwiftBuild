@@ -8,6 +8,7 @@ import { connectBackend } from './backend';
 import { issueInvitation } from './identity';
 import { createIdentity } from './identity';
 import { identityConfig } from './config';
+import { createProjectStore } from './projects';
 import { createJobStore } from './jobs';
 import { migrate } from './migrate';
 import { parseDocument } from '@swiftbuild/architecture-schema';
@@ -73,10 +74,11 @@ try {
       ),
     ),
   );
+  const creationOperation = randomUUID();
   const project = await (
     await request('/api/v1/projects', 'POST', {
       workspaceId: workspace.id,
-      operationId: randomUUID(),
+      operationId: creationOperation,
       archive: workspaceFor(d),
     })
   ).json();
@@ -129,6 +131,17 @@ try {
   ).json();
   if (bundle.report.digest !== result.report.digest)
     throw new Error('Bundle evidence differs.');
+  const restoreOperation = randomUUID();
+  const revisionRestored = await (
+    await request(
+      `/api/v1/projects/${project.id}/restore`,
+      'POST',
+      { sourceRevision: 1, operationId: restoreOperation },
+      { 'if-match': '"1"' },
+    )
+  ).json();
+  if (revisionRestored.revision !== 2)
+    throw new Error('Revision restoration failed.');
   const before = await backend.pool.query(
     'SELECT digest FROM sb_revisions WHERE project_id=$1',
     [project.id],
@@ -172,12 +185,33 @@ try {
   const session = await restoredIdentity.session(new Headers({ cookie }));
   if (!session)
     throw new Error('Restored admission/session verification failed.');
+  const restoredProjects = createProjectStore(restorePool);
+  const recoveredCreation = await restoredProjects.createProject(
+    session.user.id,
+    workspace.id,
+    project.archive,
+    creationOperation,
+  );
+  const recoveredRestore = await restoredProjects.restoreProject(
+    session.user.id,
+    project.id,
+    1,
+    1,
+    restoreOperation,
+  );
+  if (
+    recoveredCreation.id !== project.id ||
+    recoveredRestore.revision !== 2 ||
+    (await restoredProjects.listRevisions(session.user.id, project.id))
+      .length !== 2
+  )
+    throw new Error('Restored creation/restoration operation replay failed.');
   const restoredJobs = createJobStore(restorePool);
   await restoredJobs.read(session.user.id, project.id, job.id);
   const replay = await restoredJobs.submit(
     session.user.id,
     project.id,
-    1,
+    2,
     randomUUID(),
     {
       definition: bundle.input.definition,

@@ -15,6 +15,7 @@
     "build": "turbo run build",
     "lint": "eslint . && pnpm boundaries",
     "boundaries": "node tooling/scripts/boundaries.mjs",
+    "docs:check": "node tooling/scripts/docs-links.mjs",
     "typecheck": "turbo run typecheck && tsc --noEmit -p tsconfig.tooling.json",
     "test": "pnpm test:tooling && vitest run",
     "test:tooling": "node --test tooling/scripts/*.test.mjs",
@@ -25,7 +26,7 @@
     "build:storybook": "pnpm --filter @swiftbuild/ui build-storybook",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "verify": "pnpm format:check && pnpm docs:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
     "clean": "node tooling/scripts/clean.mjs",
     "changeset": "changeset",
     "server:operator": "pnpm --filter @swiftbuild/server-core cli"

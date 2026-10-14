@@ -326,7 +326,9 @@ export function ProjectList({
         </p>
       )}
       <div role="status" className="project-note">
-        {loading ? 'Loading projects…' : `${projects.length} projects loaded`}
+        {loading
+          ? 'Loading projects…'
+          : `${projects.length} ${projects.length === 1 ? 'project' : 'projects'} loaded`}
       </div>
       <ul className="project-list">
         {projects.map((project) => (

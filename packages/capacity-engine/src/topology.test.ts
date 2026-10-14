@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+import { readFile } from 'node:fs/promises';
 import { engineeringSampleDocument } from '@swiftbuild/components-core';
 
 import { fixture, queueFixture } from './fixture.test.data';
@@ -14,6 +15,46 @@ const options = {
   maxEvents: 100000,
   maxWallTimeMs: 10000,
 };
+it('imports the tracked illustrative measurement examples without changing provenance', async () => {
+  const profile = fixture().performanceProfiles[0]!;
+  const sampleRaw = await readFile(
+    new URL(
+      '../../../examples/measurements/service-samples.csv',
+      import.meta.url,
+    ),
+    'utf8',
+  );
+  const curveRaw = await readFile(
+    new URL(
+      '../../../examples/measurements/capacity-curve.csv',
+      import.meta.url,
+    ),
+    'utf8',
+  );
+  const samples = importMeasurementsCSV(sampleRaw, profile);
+  const curve = importMeasurementsCSV(curveRaw, profile);
+  expect(samples.serviceTime).toEqual({
+    kind: 'empirical',
+    samplesMs: [10, 12, 18],
+  });
+  expect(curve.capacityCurve).toEqual([
+    {
+      requestsPerSecond: 10,
+      meanLatencyMs: 12,
+      p95LatencyMs: 20,
+      p99LatencyMs: 30,
+    },
+    {
+      requestsPerSecond: 20,
+      meanLatencyMs: 18,
+      p95LatencyMs: 35,
+      p99LatencyMs: 50,
+    },
+  ]);
+  expect(samples.provenance).toEqual(profile.provenance);
+  expect(curve.provenance).toEqual(profile.provenance);
+  expect(profile.provenance.kind).toBe('illustrative');
+});
 it('keeps writes on the primary at cache-hit extremes', () => {
   const d = engineeringSampleDocument();
   d.performanceProfiles.find((p) => p.model === 'cache')!.cacheHitRatio = 1;
@@ -145,4 +186,54 @@ it('validates empirical samples and capacity curve operating ranges', () => {
       (m) => m.id === 'mean-latency',
     )!.value,
   ).toBeUndefined();
+});
+it('rejects malformed CSV quoting without changing the supplied profile', () => {
+  const profile = fixture().performanceProfiles[0]!;
+  const original = structuredClone(profile);
+  for (const raw of [
+    'service_ms\n"2"0\n30',
+    'service_ms\n"20" "0"\n30',
+    'service_ms\n2"0\n30',
+    'service_ms\n"20\n30',
+    'requests_per_second,mean_latency_ms\n1,"2"0\n5,40',
+  ]) {
+    expect(() => importMeasurementsCSV(raw, profile)).toThrow(
+      /CSV row 2, field/,
+    );
+    expect(profile).toEqual(original);
+  }
+});
+it('preserves BOM, quoted cells, trailing whitespace and CRLF in CSV', () => {
+  const profile = fixture().performanceProfiles[0]!;
+  const samples = importMeasurementsCSV(
+    '\uFEFF"service_ms"\r\n"20" \t\r\n30\r\n',
+    profile,
+  );
+  expect(samples.serviceTime).toEqual({
+    kind: 'empirical',
+    samplesMs: [20, 30],
+  });
+  expect(samples.provenance).toEqual(profile.provenance);
+  const curve = importMeasurementsCSV(
+    'requests_per_second,mean_latency_ms,p95_latency_ms\r1,"20",\r5,"40",50',
+    profile,
+  );
+  expect(curve.capacityCurve).toEqual([
+    {
+      requestsPerSecond: 1,
+      meanLatencyMs: 20,
+      p95LatencyMs: undefined,
+      p99LatencyMs: undefined,
+    },
+    {
+      requestsPerSecond: 5,
+      meanLatencyMs: 40,
+      p95LatencyMs: 50,
+      p99LatencyMs: undefined,
+    },
+  ]);
+  // Doubled quotes are valid CSV syntax, but the decoded value is not numeric.
+  expect(() =>
+    importMeasurementsCSV('service_ms\n"2""0"\n30', profile),
+  ).toThrow('positive number');
 });

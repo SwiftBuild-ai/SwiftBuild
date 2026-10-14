@@ -1,0 +1,3 @@
+requests_per_second,mean_latency_ms,p95_latency_ms,p99_latency_ms
+10,12,20,30
+20,18,35,50

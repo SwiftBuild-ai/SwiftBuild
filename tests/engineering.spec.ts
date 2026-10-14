@@ -239,6 +239,29 @@ test('capacity profile CSV, inspector tabs and keyboard connections work', async
   await expect(
     page.getByRole('tab', { name: 'Capacity', exact: true }),
   ).toBeFocused();
+  const tabs = inspector.getByRole('tab');
+  const firstTab = tabs.first();
+  const lastTab = tabs.last();
+  for (const [key, target] of [
+    ['Home', firstTab],
+    ['End', lastTab],
+    ['ArrowRight', firstTab],
+    ['ArrowLeft', lastTab],
+  ] as const) {
+    await page.keyboard.press(key);
+    await expect(target).toBeFocused();
+    await expect(target).toHaveAttribute('aria-selected', 'true');
+    await expect(target).toHaveAttribute('tabindex', '0');
+    await expect(inspector.locator('[role="tab"][tabindex="0"]')).toHaveCount(
+      1,
+    );
+    await expect(
+      inspector.locator('[role="tab"][aria-selected="true"]'),
+    ).toHaveCount(1);
+    const panelId = await target.getAttribute('aria-controls');
+    await expect(inspector.locator(`[id="${panelId}"]`)).toBeVisible();
+    await expect(inspector.getByRole('tabpanel')).toHaveCount(1);
+  }
   await page.getByRole('button', { name: 'Close inspector' }).click();
   await page.keyboard.press('c');
   const dialog = page.getByRole('dialog', {

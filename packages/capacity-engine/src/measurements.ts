@@ -7,29 +7,44 @@ function rowsOf(raw: string): string[][] {
   const rows: string[][] = [];
   let row: string[] = [],
     field = '',
-    quoted = false;
+    state: 'start' | 'unquoted' | 'quoted' | 'closed' = 'start',
+    line = 1,
+    fieldLine = 1;
+  const malformed = (message: string) =>
+    new Error(`CSV row ${fieldLine}, field ${row.length + 1}: ${message}`);
   const text = raw.replace(/^\uFEFF/, '');
   for (let i = 0; i < text.length; i++) {
     const c = text[i]!;
     if (c === '"') {
-      if (quoted && text[i + 1] === '"') {
+      if (state === 'quoted' && text[i + 1] === '"') {
         field += '"';
         i++;
-      } else if (!quoted && field)
-        throw new Error('Unexpected quote in CSV field.');
-      else quoted = !quoted;
-    } else if (c === ',' && !quoted) {
+      } else if (state === 'quoted') state = 'closed';
+      else if (state === 'start') state = 'quoted';
+      else throw malformed('Unexpected quote in CSV field.');
+    } else if (c === ',' && state !== 'quoted') {
       row.push(field);
       field = '';
-    } else if ((c === '\n' || c === '\r') && !quoted) {
+      state = 'start';
+      fieldLine = line;
+    } else if ((c === '\n' || c === '\r') && state !== 'quoted') {
       if (c === '\r' && text[i + 1] === '\n') i++;
       row.push(field);
       if (row.some((v) => v.trim())) rows.push(row);
       row = [];
       field = '';
-    } else field += c;
+      state = 'start';
+      fieldLine = ++line;
+    } else if (state === 'closed') {
+      if (c !== ' ' && c !== '\t')
+        throw malformed('Unexpected character after closing quote.');
+    } else {
+      field += c;
+      if (state === 'start') state = 'unquoted';
+      if (c === '\n' || (c === '\r' && text[i + 1] !== '\n')) line++;
+    }
   }
-  if (quoted) throw new Error('CSV contains an unclosed quote.');
+  if (state === 'quoted') throw malformed('CSV contains an unclosed quote.');
   row.push(field);
   if (row.some((v) => v.trim())) rows.push(row);
   return rows;

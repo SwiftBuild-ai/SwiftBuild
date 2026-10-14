@@ -8,6 +8,14 @@ docker compose --env-file server.env -f compose.yaml -f compose.server.yaml up -
 
 The one-shot migration service applies checksum-verified migrations with the administrator connection and provisions a separate runtime role. The web host and dispatcher use this runtime role, which does not own tables or schema changes. PostgreSQL data lives in a named volume. The Python service has no published port, database connection or identity-provider configuration.
 
+## Stop, restart and readiness
+
+Use the same private environment file and Compose project name for every start. Stop with `docker compose --env-file server.env -f compose.yaml -f compose.server.yaml down`; this preserves the named database volume. Start again with the command above. Keep database passwords and the identity secret stable. Never add `--volumes` or `-v` when stopping a deployment whose data must survive.
+
+On startup, the database must become healthy before the one-shot migration/provisioning service runs. Web and dispatcher start only after it succeeds; web readiness also waits for the dispatcher heartbeat and compatible private computation service. Schema changes remain outside web startup. On a failed `--wait`, inspect `docker compose --env-file server.env -f compose.yaml -f compose.server.yaml ps -a` and the relevant service logs privately. A database connection failure, failed checksum/migration, missing secret or incompatible/unhealthy computation service must be resolved before treating the host as ready. Preserve the volume and applied migration history; do not bypass checks or rewrite checksums.
+
+The disposable `tooling/scripts/server-smoke.sh` workflow uses an isolated `_test` database. After authenticated editing and backup/restore checks, it removes and recreates the services without removing their volume, signs in as the original synthetic user, verifies membership and the original project and historical exports, then saves and rereads a new revision. Only its final cleanup removes the disposable smoke volume.
+
 Bootstrap through the operator service, forwarding identity configuration from the private environment file:
 
 ```sh

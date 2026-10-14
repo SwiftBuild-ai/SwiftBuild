@@ -81,6 +81,9 @@ test('server editing preserves revisions, stale/offline recovery and complete lo
       exact: true,
     }),
   ).toBeVisible();
+  await expect(
+    page.getByRole('status').filter({ hasText: /^1 project loaded$/ }),
+  ).toBeVisible();
   const recoveryBackend = connectBackend({
     DATABASE_URL: process.env.SWIFTBUILD_BROWSER_DATABASE_URL,
     SWIFTBUILD_URL: 'http://localhost:3200',

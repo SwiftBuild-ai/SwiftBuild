@@ -44,11 +44,13 @@ const backup = '/tmp/swiftbuild-' + randomUUID();
 let restorePool: Pool | undefined;
 let replayWorker: ReturnType<typeof spawn> | undefined;
 try {
-  const email = 'smoke-' + randomUUID() + '@example.test';
+  const fixtureId = process.env.SWIFTBUILD_SMOKE_RESTART_ID ?? randomUUID();
+  const email = 'smoke-' + fixtureId + '@example.test';
   const invitation = await issueInvitation(backend.pool, email, {
     bootstrap: true,
   });
-  const password = randomUUID() + '!';
+  const password =
+    process.env.SWIFTBUILD_SMOKE_RESTART_PASSWORD ?? randomUUID() + '!';
   await request(
     '/api/auth/sign-up/email',
     'POST',

@@ -3,18 +3,45 @@ description: Describe a reproducible problem.
 body:
   - type: markdown
     attributes:
-      value: 'Do not report vulnerabilities here. Read SECURITY.md for private reporting prerequisites.'
+      value: 'Do not report vulnerabilities here. Read SECURITY.md for private reporting prerequisites. Omit database URLs, cookies, credentials, invitation links and private documents from every field and attachment.'
+  - type: input
+    id: revision
+    attributes:
+      label: Revision or version
+      description: Which commit, release or image are you running? Enter unknown if unavailable.
+      placeholder: Commit SHA, release version or unknown
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Operating system, browser and runtime
+      description: Include relevant versions; use unknown or not applicable for details you cannot provide.
+      placeholder: OS and browser version; Node/container runtime when relevant
+    validations:
+      required: true
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Application mode
+      options:
+        - Browser-local
+        - Server
+        - Both
+        - Unknown / not applicable
+    validations:
+      required: true
   - type: textarea
     id: problem
     attributes:
-      label: Context and proposed outcome
-      description: Describe a reproducible problem.
+      label: Problem
+      description: Briefly describe the affected workflow and what goes wrong.
     validations:
       required: true
   - type: textarea
     id: evidence
     attributes:
-      label: Evidence and verification
-      description: Include reproduction steps, examples, expected behavior, or acceptance criteria. Remove private data.
+      label: Reproduction and expected versus actual behavior
+      description: Give minimal steps using synthetic data, then state what you expected and what happened. Include a sanitized error or screenshot only when useful.
     validations:
       required: true

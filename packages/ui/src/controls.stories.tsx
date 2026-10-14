@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { useState } from 'react';
 import { ActionMenu, Button, IconButton, Modal } from './index';
 const meta = {
   title: 'Foundation/Button',
@@ -27,15 +28,22 @@ export const ExportMenu: Story = {
 export const LabeledIcon: Story = {
   render: () => <IconButton label="Add component">+</IconButton>,
 };
+function DialogExample() {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Button onClick={() => setOpen(true)}>Open import dialog</Button>
+      <Modal
+        open={open}
+        onOpenChange={setOpen}
+        title="Import architecture"
+        description="Choose a native JSON architecture."
+      >
+        <p>All documents are validated before replacing your draft.</p>
+      </Modal>
+    </>
+  );
+}
 export const Dialog: Story = {
-  render: () => (
-    <Modal
-      open
-      onOpenChange={() => {}}
-      title="Import architecture"
-      description="Choose a native JSON architecture."
-    >
-      <p>All documents are validated before replacing your draft.</p>
-    </Modal>
-  ),
+  render: () => <DialogExample />,
 };

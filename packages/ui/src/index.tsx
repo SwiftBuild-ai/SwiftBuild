@@ -3,8 +3,11 @@ export { TechnologyIcon } from './technology-icon';
 import {
   useId,
   useRef,
+  useLayoutEffect,
   type ButtonHTMLAttributes,
   type ReactNode,
+  type RefObject,
+  type ComponentPropsWithRef,
 } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import * as Tooltip from '@radix-ui/react-tooltip';
@@ -94,7 +97,7 @@ export function IconButton({
   label,
   children,
   ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & { label: string }) {
+}: ComponentPropsWithRef<'button'> & { label: string }) {
   return (
     <Tooltip.Provider delayDuration={350}>
       <Tooltip.Root>
@@ -119,29 +122,65 @@ export function Modal({
   title,
   description,
   children,
+  returnFocusRef,
+  initialFocusRef,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
   description: string;
   children: ReactNode;
+  returnFocusRef?: RefObject<HTMLElement | null>;
+  initialFocusRef?: RefObject<HTMLElement | null>;
 }) {
   const opener = useRef<HTMLElement | null>(null);
+  // Track the invoker while closed, before child autofocus runs during mount.
+  // Ignore other dialogs so a dialog handoff retains the original invoker.
+  useLayoutEffect(() => {
+    if (open) return;
+    const remember = () => {
+      const active = document.activeElement;
+      if (
+        active instanceof HTMLElement &&
+        active !== document.body &&
+        !active.closest('[role="dialog"]')
+      )
+        opener.current = active;
+    };
+    remember();
+    document.addEventListener('focusin', remember);
+    return () => document.removeEventListener('focusin', remember);
+  }, [open]);
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="modal-overlay" />
         <Dialog.Content
           className="modal-content"
-          onOpenAutoFocus={() => {
-            opener.current =
-              document.activeElement instanceof HTMLElement
-                ? document.activeElement
-                : null;
+          onOpenAutoFocus={(event) => {
+            if (initialFocusRef?.current) {
+              event.preventDefault();
+              initialFocusRef.current.focus();
+            }
           }}
           onCloseAutoFocus={(event) => {
             event.preventDefault();
-            if (opener.current?.isConnected) opener.current.focus();
+            // A destination dialog owns focus when dialogs hand off.
+            if (document.querySelector('[role="dialog"][data-state="open"]'))
+              return;
+            const target = returnFocusRef?.current ?? opener.current;
+            if (target?.isConnected && !target.closest('[inert]'))
+              target.focus();
+            else {
+              const fallback =
+                document.querySelector<HTMLElement>(
+                  'main[tabindex="-1"]:not([inert] *)',
+                ) ??
+                document.querySelector<HTMLElement>(
+                  'button:not(:disabled):not([inert] *)',
+                );
+              fallback?.focus();
+            }
           }}
         >
           <div className="modal-heading">

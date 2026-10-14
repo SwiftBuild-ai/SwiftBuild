@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState, type RefObject } from 'react';
+import { useEffect, useState, useMemo, memo, type RefObject } from 'react';
 import {
   Search,
   ChevronRight,
@@ -13,6 +13,7 @@ import {
   Info,
   Star,
   Upload,
+  X,
 } from 'lucide-react';
 import { TechnologyIcon } from '@swiftbuild/ui';
 import type { ComponentDefinition } from '@swiftbuild/architecture-schema';
@@ -32,6 +33,7 @@ export function CatalogSidebar({
   onDetails,
   onPack,
   inputRef,
+  onDismiss,
 }: {
   definitions: ComponentDefinition[];
   onAdd: (c: ComponentDefinition) => void;
@@ -42,6 +44,7 @@ export function CatalogSidebar({
   onDetails: (c: ComponentDefinition) => void;
   onPack: () => void;
   inputRef: RefObject<HTMLInputElement | null>;
+  onDismiss: () => void;
 }) {
   const [query, setQuery] = useState(''),
     [expanded, setExpanded] = useState<string[]>([]),
@@ -143,7 +146,26 @@ export function CatalogSidebar({
     </div>
   );
   return (
-    <aside className="catalog-sidebar" aria-label="Component catalog">
+    <aside
+      className="catalog-sidebar"
+      aria-label="Component catalog"
+      onKeyDown={(event) => {
+        if (
+          event.key === 'Escape' &&
+          window.matchMedia('(max-width: 760px)').matches
+        ) {
+          event.stopPropagation();
+          onDismiss();
+        }
+      }}
+    >
+      <button
+        className="catalog-dismiss"
+        aria-label="Dismiss component catalog"
+        onClick={onDismiss}
+      >
+        <X size={16} /> Close catalog
+      </button>
       <div className="catalog-search">
         <Search size={18} />
         <input
@@ -299,11 +321,20 @@ export function CatalogSidebar({
     </aside>
   );
 }
-export function ObjectSidebar({ onInspect }: { onInspect: () => void }) {
+export const ObjectSidebar = memo(function ObjectSidebar({
+  onInspect,
+}: {
+  onInspect: () => void;
+}) {
   const document = useEditor((s) => s.history.present);
   const selected = useEditor((s) => s.selected);
   const select = useEditor((s) => s.select);
   const [query, setQuery] = useState('');
+  const selectedIds = useMemo(() => new Set(selected), [selected]);
+  const definitions = useMemo(
+    () => new Map(document.components.map((c) => [c.id, c])),
+    [document.components],
+  );
   return (
     <aside
       className="catalog-sidebar objects-sidebar"
@@ -326,14 +357,12 @@ export function ObjectSidebar({ onInspect }: { onInspect: () => void }) {
         {document.nodes
           .filter((n) => n.name.toLowerCase().includes(query.toLowerCase()))
           .map((node) => {
-            const definition = document.components.find(
-              (c) => c.id === node.componentId,
-            )!;
+            const definition = definitions.get(node.componentId)!;
 
             return (
               <button
                 key={node.id}
-                className={`object-item ${selected.includes(node.id) ? 'active' : ''}`}
+                className={`object-item ${selectedIds.has(node.id) ? 'active' : ''}`}
                 onClick={() => {
                   select([node.id]);
                   onInspect();
@@ -359,4 +388,4 @@ export function ObjectSidebar({ onInspect }: { onInspect: () => void }) {
       </div>
     </aside>
   );
-}
+});

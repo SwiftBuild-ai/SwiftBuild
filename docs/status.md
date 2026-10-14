@@ -1,5 +1,48 @@
 # SwiftBuild current status
 
+## Annotated workbench controls on October 13, 2026
+
+Template selection now presents three separate purpose-labeled examples, document-derived component/connection counts, aligned actions and a replacement warning outside the cards. Engineering values remain illustrative. The canvas attribution badge is omitted through the adapter's supported option; the original dependency copyright/permission notice remains bundled in the web distribution.
+
+Design/Engineering is a personal detail preference: it changes declared capability visibility on canvas nodes and in the Configuration inspector, while all engineering destinations remain available in either mode. The setting survives reload without altering documents. Activity offers a confirmed Clear log action with cancel/Escape support and return focus; it clears only the current session's visible save messages. Documents, checkpoints, immutable revisions and server audit history remain intact, and subsequent saves create new entries.
+
+Final local verification passed `pnpm verify`: formatting, lint/boundaries, types, 104 non-database tests and production build. The full browser-local suite passed 31 tests; five server-only workflows were skipped. Regression coverage checks template containment at 390 and 870 pixels, distinct example purposes, omitted attribution, detail-mode capability visibility and reload persistence without document changes, and activity confirmation/cancellation/focus plus later saves. Fresh light/dark template captures and dark settings, engineering canvas and confirmation captures were inspected. The updated in-app preview was refreshed and its template dialog verified. The 38 database tests and dedicated server browser acceptance remain unverified without an isolated test database; Docker remains stopped.
+
+## Workbench efficiency measurements on October 13, 2026
+
+The editor caches validation by immutable document/report inputs, reuses the evaluation fingerprint, preserves semantic graph data across selection changes, indexes selection and report lookups, and isolates viewport subscriptions in canvas controls. The shell subscribes to selection count and builds palette entries only when open. Persistence queues and edit-generation status remain intact. New regressions cover graph-reference preservation, UI navigation without another workspace write, semantic report invalidation/undo, removed dialog invokers, and four responsive widths in both themes with reduced motion.
+
+Local measurements compare the existing production preview at the `98644ca` baseline with two runs of the efficiency implementation following `416de5e`. Fixtures contain 100 or 1,000 service nodes, no edges, and fixed grid positions. Each interaction has one warm-up and eight measured repetitions. The table reports median browser task time in milliseconds; the optimized column spans the two run medians. Selection includes inspector open/close; panel means settings open/close. Automation selector resolution is included, so these are workflow benchmark observations rather than isolated render durations or production latency guarantees. Wall times and raw samples remain in ignored local artifacts.
+
+| Nodes | Interaction         | Baseline task ms | Optimized task ms |
+| ----- | ------------------- | ---------------- | ----------------- |
+| 100   | Command search      | 8.0              | 4.6–6.9           |
+| 100   | Selection/inspector | 74.7             | 58.6–88.9         |
+| 100   | Zoom                | 14.8             | 12.8–17.7         |
+| 100   | Pan                 | 10.8             | 10.6–12.9         |
+| 100   | Settings panel      | 81.1             | 63.4–79.4         |
+| 1,000 | Command search      | 46.1             | 26.5–32.0         |
+| 1,000 | Selection/inspector | 1,170.6          | 1,049.4–1,064.3   |
+| 1,000 | Zoom                | 163.9            | 74.0–102.3        |
+| 1,000 | Pan                 | 101.7            | 37.8–38.2         |
+| 1,000 | Settings panel      | 739.1            | 604.4–688.2       |
+
+The processor identifier is `Intel(R) Core(TM) 7 240H`, with 16 logical processors and approximately 15.6 GiB memory, using runtime `v24.12.0` and package manager `10.28.1` on the local Windows host. Larger fixtures show lower task time in all measured workflows; smaller-fixture variation does not establish a universal improvement. The 1,000-node selection/inspector workflow remains slow. An additional object-row memoization experiment did not establish a repeatable gain and was removed.
+
+Final local verification passed `pnpm verify`, including formatting, lint/boundaries, types, 104 non-database tests and production build. The complete browser-local run passed all 28 tests, including the corrected main-landmark fallback for a removed dialog invoker. Fresh light/dark captures at 390, 760, 1,024 and 1,440 pixels were inspected; geometry checks enforce containment and non-overlapping bottom controls. These checks do not certify accessibility or all large-graph interactions.
+
+The 38 database tests remain skipped. The dedicated server browser command was attempted and refused startup because `SWIFTBUILD_TEST_DATABASE_URL` was not configured. Docker remains stopped; database/browser-server acceptance and hosted checks are not claimed for these changes.
+
+## Workbench command discovery on October 13, 2026
+
+The command palette now has independent search state, grouped ranked results, stable command identities, duplicate-name details and combobox keyboard navigation. Empty results are announced and empty shortcut badges are omitted. Local formatting, lint/boundaries, types, 103 non-database tests and production build passed; all 19 workbench/catalog browser tests passed. Database and dedicated server-browser verification remain unavailable without the isolated connection described below.
+
+## Workbench keyboard and responsive improvements on October 13, 2026
+
+The workbench now remembers dialog invokers before child autofocus, retains destination focus during dialog handoffs, and supports explicit initial/return focus refs. Crossing the 760px breakpoint updates catalog visibility; narrow catalog dismissal is available through a labeled control and Escape with return focus. Existing persisted documents and recovery contracts are unchanged.
+
+Local verification passed formatting, lint/boundaries, types, 101 non-database tests, production build and all 24 browser-local tests. The 38 database tests were skipped because no isolated test connection was configured; the five server browser workflows require their dedicated configuration and are not established by this run. An initial overlapping build/browser run failed with a Windows output lock and subsequent hydration failures; sequential verification and a fresh full browser run passed. Docker remains stopped.
+
 Implementation inventory updated October 13, 2026. Durable creation recovery, immutable restoration and bootstrap rotation are recorded in the foundation verification entries below. Server editor implementation was verified at `4992e59`, with database-backed browser verification at `7a617bc`. The server API foundation at `8603007`, account delivery and earlier October 11 documentation baseline at `20dc9ee` remain recorded below. This page distinguishes source-backed capabilities from dated execution results and does not certify production readiness.
 
 ## Capability inventory

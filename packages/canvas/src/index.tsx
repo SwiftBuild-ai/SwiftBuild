@@ -1,5 +1,12 @@
 'use client';
-import { useEffect, useRef, useState, type ChangeEvent } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  useMemo,
+  useCallback,
+  type ChangeEvent,
+} from 'react';
 import { ReactFlowProvider, useReactFlow } from '@xyflow/react';
 import {
   Braces,
@@ -41,13 +48,8 @@ import {
   defaultComponents,
   searchComponents,
   loadPack,
-  infrastructureSampleDocument,
 } from '@swiftbuild/component-registry';
-import {
-  coreComponents,
-  sampleDocument,
-  engineeringSampleDocument,
-} from '@swiftbuild/components-core';
+import { coreComponents } from '@swiftbuild/components-core';
 import { graphIssues } from '@swiftbuild/graph-engine';
 import {
   serializeDocument,
@@ -72,7 +74,6 @@ import {
   type ProjectArchive,
   type WorkspaceAdapter,
 } from './workspace';
-import { inputFingerprint } from '@swiftbuild/architecture-model';
 import { evaluateArchitecture } from '@swiftbuild/rule-engine';
 import {
   ENGINE_VERSION,
@@ -82,6 +83,9 @@ import { CatalogSidebar, ObjectSidebar } from './catalog';
 import { recordCatalogUse } from './catalog-preferences';
 import { StoreContext, useEditor, GraphCanvas, Inspector } from './graph';
 import { importDocument, MAX_IMPORT_BYTES, DRAFT_KEY } from './storage';
+import { CommandPalette } from './command-palette';
+import { ArchitectureTemplates } from './architecture-templates';
+import type { WorkbenchCommand } from './commands';
 import type { AnalysisAdapter } from '@swiftbuild/computation-contracts';
 export type WorkbenchStorage = {
   createAdapter: () => WorkspaceAdapter;
@@ -106,7 +110,7 @@ function Editor({
   const savedLabel = storage?.savedLabel ?? 'Saved locally';
   const activityLabel = storage ? savedLabel : 'Saved draft';
   const document = useEditor((s) => s.history.present);
-  const selected = useEditor((s) => s.selected);
+  const selectionCount = useEditor((s) => s.selected.length);
   const past = useEditor((s) => s.history.past.length);
   const future = useEditor((s) => s.history.future.length);
   const message = useEditor((s) => s.message);
@@ -128,16 +132,30 @@ function Editor({
   const [validation, setValidation] = useState(false);
   const [newProject, setNewProject] = useState(false);
   const [engineering, setEngineering] = useState(false);
+  const [detailReady, setDetailReady] = useState(false);
+  const [clearLog, setClearLog] = useState(false);
+  const activityClose = useRef<HTMLButtonElement>(null);
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [themeReady, setThemeReady] = useState(false);
   const [componentDetails, setComponentDetails] =
     useState<ComponentDefinition | null>(null);
   const packInput = useRef<HTMLInputElement>(null);
-  const definitions = [
-    ...new Map(
-      [...defaultComponents, ...document.components].map((c) => [c.id, c]),
-    ).values(),
-  ];
+  const definitions = useMemo(
+    () => [
+      ...new Map(
+        [...defaultComponents, ...document.components].map((c) => [c.id, c]),
+      ).values(),
+    ],
+    [document.components],
+  );
+  const definitionNameCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const definition of definitions)
+      counts.set(definition.name, (counts.get(definition.name) ?? 0) + 1);
+    return counts;
+  }, [definitions]);
+  const openInspector = useCallback(() => setInspector(true), []);
+  const openHelp = useCallback(() => setHelp(true), []);
   const [query, setQuery] = useState('');
   const [hydrated, setHydrated] = useState(false);
   const [locked, setLocked] = useState(false);
@@ -171,12 +189,13 @@ function Editor({
   const archiveInput = useRef<HTMLInputElement>(null);
   const [events, setEvents] = useState<{ time: string; message: string }[]>([]);
   const catalogSearch = useRef<HTMLInputElement>(null);
+  const catalogTrigger = useRef<HTMLButtonElement>(null);
+  const componentSearch = useRef<HTMLInputElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   useEffect(() => {
     if (hydrated) onArchiveChange?.({ ...workspace, document });
   }, [document, workspace, hydrated, onArchiveChange]);
   useEffect(() => {
-    setSidebar(window.innerWidth > 760);
     let active = true;
     const hydrate = async () => {
       try {
@@ -215,6 +234,13 @@ function Editor({
       active = false;
     };
   }, [replace, notify, storage, savedLabel]);
+  useEffect(() => {
+    const narrow = window.matchMedia('(max-width: 760px)');
+    const update = () => setSidebar(!narrow.matches);
+    update();
+    narrow.addEventListener('change', update);
+    return () => narrow.removeEventListener('change', update);
+  }, []);
   useEffect(() => {
     if (!hydrated || locked) return;
     const generation = ++saveGeneration.current;
@@ -281,6 +307,27 @@ function Editor({
     }
   }, [theme, themeReady]);
   useEffect(() => {
+    try {
+      setEngineering(
+        localStorage.getItem('swiftbuild.detail-mode') === 'engineering',
+      );
+    } catch {
+      /* The detail setting remains usable in memory. */
+    }
+    setDetailReady(true);
+  }, []);
+  useEffect(() => {
+    if (!detailReady) return;
+    try {
+      localStorage.setItem(
+        'swiftbuild.detail-mode',
+        engineering ? 'engineering' : 'design',
+      );
+    } catch {
+      /* Optional preferences do not block editing. */
+    }
+  }, [engineering, detailReady]);
+  useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
       if (target.closest('input,textarea,select,[contenteditable="true"]'))
@@ -317,6 +364,7 @@ function Editor({
         return;
       }
       if (
+        clearLog ||
         browser ||
         connectionDialog ||
         palette ||
@@ -370,6 +418,7 @@ function Editor({
     help,
     templates,
     custom,
+    clearLog,
     connectionDialog,
     section,
   ]);
@@ -433,11 +482,18 @@ function Editor({
     setInspector(true);
     return true;
   };
-  const filtered = searchComponents(definitions, query);
-  const issues = graphIssues(document);
-  const engineeringValidation = evaluateArchitecture(document, {
-    capacity: currentReport ?? undefined,
-  });
+  const filtered = useMemo(
+    () => searchComponents(definitions, query),
+    [definitions, query],
+  );
+  const issues = useMemo(() => graphIssues(document), [document]);
+  const engineeringValidation = useMemo(
+    () =>
+      evaluateArchitecture(document, {
+        capacity: currentReport ?? undefined,
+      }),
+    [document, currentReport],
+  );
   const openRecord = (destination: EngineeringSection, id: string) => {
     setSection(destination);
     setSidebar(false);
@@ -448,104 +504,133 @@ function Editor({
       record?.focus();
     }, 100);
   };
-  const commands = [
-    {
-      name: 'Connect architecture objects',
-      hint: 'C',
-      run: () => {
-        setSection(null);
-        setConnectionDialog(true);
-      },
-    },
-    ...definitions.map((definition) => ({
-      name: `Add ${definition.name}`,
-      hint: '',
-      run: () => {
-        setSection(null);
-        addComponent(definition);
-      },
-    })),
-    ...engineeringSections.map((item) => ({
-      name: `Open ${item.label}`,
-      hint: '',
-      run: () => {
-        setSection(item.id);
-        setSidebar(false);
-        setInspector(false);
-      },
-    })),
-    ...document.nodes.map((node) => ({
-      name: `Object: ${node.name}`,
-      hint: '',
-      run: () => {
-        setSection(null);
-        select([node.id]);
-        setInspector(true);
-        void flow.fitView({
-          nodes: [{ id: node.id }],
-          padding: 0.6,
-          maxZoom: 1,
-        });
-      },
-    })),
-    ...[...document.requirements, ...document.nonFunctionalRequirements].map(
-      (r) => ({
-        name: `Requirement: ${r.title}`,
-        hint: '',
-        run: () => {
-          openRecord('requirements', `requirement-${r.id}`);
+  const commandEntries: (Omit<WorkbenchCommand, 'id' | 'group'> &
+    Partial<Pick<WorkbenchCommand, 'id' | 'group'>>)[] = palette
+    ? [
+        {
+          name: 'Connect architecture objects',
+          hint: 'C',
+          run: () => {
+            setSection(null);
+            setConnectionDialog(true);
+          },
         },
-      }),
-    ),
-    ...document.decisions.map((d) => ({
-      name: `Decision: ${d.title}`,
-      hint: '',
-      run: () => {
-        openRecord('decisions', `decision-${d.id}`);
-      },
-    })),
-    ...engineeringValidation.findings.map((finding) => ({
-      name: `Finding: ${finding.title}`,
-      hint: finding.severity,
-      run: () => openRecord('validation', `finding-${finding.id}`),
-    })),
-    {
-      name: 'Add component',
-      hint: 'A',
-      run: () => {
-        setQuery('');
-        setBrowser(true);
-      },
-    },
-    {
-      name: 'Fit architecture',
-      hint: 'F',
-      run: () => flow.fitView({ padding: 0.2 }),
-    },
-    { name: 'Undo', hint: 'Ctrl Z', run: undo },
-    { name: 'Redo', hint: 'Ctrl Shift Z', run: redo },
-    { name: 'Duplicate selection', hint: 'Ctrl D', run: duplicate },
-    { name: 'Delete selection', hint: 'Delete', run: remove },
-    { name: 'Export JSON', hint: '', run: exportJSON },
-    { name: 'Import JSON', hint: '', run: () => fileInput.current?.click() },
-    { name: 'New architecture', hint: '', run: () => setNewProject(true) },
-    {
-      name: 'Toggle theme',
-      hint: '',
-      run: () => setTheme((t) => (t === 'dark' ? 'light' : 'dark')),
-    },
-    {
-      name: 'Validate architecture',
-      hint: '',
-      run: () => {
-        setSection('validation');
-        setSidebar(false);
-      },
-    },
-  ];
+        ...definitions.map((definition) => ({
+          id: `component:${definition.id}`,
+          group: 'Components',
+          detail:
+            (definitionNameCounts.get(definition.name) ?? 0) > 1
+              ? definition.id
+              : undefined,
+          name: `Add ${definition.name}`,
+          hint: '',
+          run: () => {
+            setSection(null);
+            addComponent(definition);
+          },
+        })),
+        ...engineeringSections.map((item) => ({
+          id: `section:${item.id}`,
+          name: `Open ${item.label}`,
+          hint: '',
+          run: () => {
+            setSection(item.id);
+            setSidebar(false);
+            setInspector(false);
+          },
+        })),
+        ...document.nodes.map((node) => ({
+          id: `object:${node.id}`,
+          group: 'Objects',
+          detail: node.id,
+          name: `Object: ${node.name}`,
+          hint: '',
+          run: () => {
+            setSection(null);
+            select([node.id]);
+            setInspector(true);
+            void flow.fitView({
+              nodes: [{ id: node.id }],
+              padding: 0.6,
+              maxZoom: 1,
+            });
+          },
+        })),
+        ...[
+          ...document.requirements,
+          ...document.nonFunctionalRequirements,
+        ].map((r) => ({
+          id: `requirement:${r.id}`,
+          group: 'Engineering records',
+          name: `Requirement: ${r.title}`,
+          hint: '',
+          run: () => {
+            openRecord('requirements', `requirement-${r.id}`);
+          },
+        })),
+        ...document.decisions.map((d) => ({
+          id: `decision:${d.id}`,
+          group: 'Engineering records',
+          name: `Decision: ${d.title}`,
+          hint: '',
+          run: () => {
+            openRecord('decisions', `decision-${d.id}`);
+          },
+        })),
+        ...engineeringValidation.findings.map((finding) => ({
+          id: `finding:${finding.id}`,
+          group: 'Engineering records',
+          name: `Finding: ${finding.title}`,
+          hint: finding.severity,
+          run: () => openRecord('validation', `finding-${finding.id}`),
+        })),
+        {
+          name: 'Add component',
+          hint: 'A',
+          run: () => {
+            setQuery('');
+            setBrowser(true);
+          },
+        },
+        {
+          name: 'Fit architecture',
+          hint: 'F',
+          run: () => flow.fitView({ padding: 0.2 }),
+        },
+        { name: 'Undo', hint: 'Ctrl Z', run: undo },
+        { name: 'Redo', hint: 'Ctrl Shift Z', run: redo },
+        { name: 'Duplicate selection', hint: 'Ctrl D', run: duplicate },
+        { name: 'Delete selection', hint: 'Delete', run: remove },
+        { name: 'Export JSON', hint: '', run: exportJSON },
+        {
+          name: 'Import JSON',
+          hint: '',
+          run: () => fileInput.current?.click(),
+        },
+        { name: 'New architecture', hint: '', run: () => setNewProject(true) },
+        {
+          name: 'Toggle theme',
+          hint: '',
+          run: () => setTheme((t) => (t === 'dark' ? 'light' : 'dark')),
+        },
+        {
+          name: 'Validate architecture',
+          hint: '',
+          run: () => {
+            setSection('validation');
+            setSidebar(false);
+          },
+        },
+      ]
+    : [];
+  const commands: WorkbenchCommand[] = commandEntries.map((command) => ({
+    ...command,
+    id: command.id ?? `action:${command.name}`,
+    group: command.group ?? 'Actions',
+  }));
   const reportStale =
     !!currentReport &&
-    (currentReport.fingerprint !== inputFingerprint(document) ||
+    (currentReport.fingerprint !== engineeringValidation.fingerprint ||
       currentReport.origin === 'imported' ||
       currentReport.engineVersion !== ENGINE_VERSION ||
       currentReport.modelVersion !== '1.0');
@@ -673,6 +758,7 @@ function Editor({
             <Search size={19} />
           </IconButton>
           <IconButton
+            ref={catalogTrigger}
             label={
               sidebar && panel === 'components'
                 ? 'Hide component catalog'
@@ -685,6 +771,8 @@ function Editor({
               else {
                 setSidebar(true);
                 setPanel('components');
+                if (window.matchMedia('(max-width: 760px)').matches)
+                  setTimeout(() => catalogSearch.current?.focus(), 0);
               }
             }}
           >
@@ -748,11 +836,19 @@ function Editor({
                 setPalette(true);
               }}
               inputRef={catalogSearch}
+              onDismiss={() => {
+                setSidebar(false);
+                catalogTrigger.current?.focus();
+              }}
             />
           ) : (
-            <ObjectSidebar onInspect={() => setInspector(true)} />
+            <ObjectSidebar onInspect={openInspector} />
           ))}
-        <main className="canvas-main" aria-label="System architecture">
+        <main
+          className="canvas-main"
+          aria-label="System architecture"
+          tabIndex={-1}
+        >
           <div
             style={{
               height: '100%',
@@ -768,8 +864,8 @@ function Editor({
                   ? (currentReport ?? undefined)
                   : undefined
               }
-              onInspector={() => setInspector(true)}
-              onHelp={() => setHelp(true)}
+              onInspector={openInspector}
+              onHelp={openHelp}
             />
           </div>
           <div className="editor-floating-actions" hidden={section !== null}>
@@ -948,12 +1044,21 @@ function Editor({
             <section className="activity-panel" aria-label="Activity log">
               <div className="panel-heading">
                 <h2>Activity</h2>
-                <IconButton
-                  label="Close activity"
-                  onClick={() => setActivity(false)}
-                >
-                  <X size={16} />
-                </IconButton>
+                <div className="activity-actions">
+                  <Button
+                    disabled={!events.length}
+                    onClick={() => setClearLog(true)}
+                  >
+                    Clear log
+                  </Button>
+                  <IconButton
+                    ref={activityClose}
+                    label="Close activity"
+                    onClick={() => setActivity(false)}
+                  >
+                    <X size={16} />
+                  </IconButton>
+                </div>
               </div>
               <div className="activity-summary">
                 <Check size={14} />
@@ -962,7 +1067,7 @@ function Editor({
                   Schema {document.schemaVersion}
                 </span>
               </div>
-              <div className="activity-events">
+              <div className="activity-events" aria-live="polite">
                 {events.length ? (
                   events.map((event, i) => (
                     <div className="activity-event" key={i}>
@@ -971,17 +1076,14 @@ function Editor({
                     </div>
                   ))
                 ) : (
-                  <p>
-                    Your architecture changes will appear here as the draft is
-                    saved.
-                  </p>
+                  <p>No save activity to show. New saves will appear here.</p>
                 )}
               </div>
             </section>
           )}
-          {selected.length > 0 && section === null && (
+          {selectionCount > 0 && section === null && (
             <div className="selection-actions">
-              <span>{selected.length} selected</span>
+              <span>{selectionCount} selected</span>
               <IconButton label="Duplicate selection" onClick={duplicate}>
                 <Copy size={14} />
               </IconButton>
@@ -1191,12 +1293,14 @@ function Editor({
           </Button>
         </div>
         <div className="settings-section">
-          <h3>Architecture detail</h3>
+          <h3>Canvas and inspector detail</h3>
           <p>
-            Design mode keeps the canvas clear. Engineering mode shows
-            capabilities.
+            Design shows component names and configuration. Engineering also
+            shows declared capabilities on canvas nodes and in the Configuration
+            inspector. Requirements, capacity analysis and other engineering
+            tools work in both modes.
           </p>
-          <div className="mode-switch" aria-label="Display mode">
+          <div className="mode-switch" role="group" aria-label="Display mode">
             <button
               aria-pressed={!engineering}
               className={!engineering ? 'active' : ''}
@@ -1212,6 +1316,11 @@ function Editor({
               Engineering
             </button>
           </div>
+          {!document.nodes.length && (
+            <p className="detail-mode-hint">
+              Add a component or choose a template to see the detail change.
+            </p>
+          )}
         </div>
         <div className="settings-section">
           <h3>{storage ? 'Project storage' : 'Local workspace'}</h3>
@@ -1258,73 +1367,49 @@ function Editor({
         </div>
       </Modal>
       <Modal
+        open={clearLog}
+        onOpenChange={setClearLog}
+        title="Clear activity log?"
+        description="Remove the visible save messages from this session? This does not delete your architecture, checkpoints, saved revisions or server audit history. New saves will appear again."
+        returnFocusRef={!events.length ? activityClose : undefined}
+      >
+        <div className="confirm-actions">
+          <Button onClick={() => setClearLog(false)}>Cancel</Button>
+          <Button
+            onClick={() => {
+              setEvents([]);
+              setClearLog(false);
+            }}
+          >
+            Clear log
+          </Button>
+        </div>
+      </Modal>
+      <Modal
         open={templates}
         onOpenChange={setTemplates}
         title="Architecture templates"
         description="Start with a meaningful system, then make it yours."
       >
-        <div className="template-preview">
-          <Network size={30} />
-          <h3>Commerce platform</h3>
-          <p>
-            A web client, stateless API, session cache, and durable database.
-            Includes compatible semantic connections and editable configuration.
-          </p>
-          <span>4 components · 3 connections</span>
-        </div>
-        <p className="template-warning">
-          Using this template replaces your current{' '}
-          {storage ? 'project' : 'browser draft'}. Export a copy first to keep
-          it.
-        </p>
-        <div className="confirm-actions">
-          <Button onClick={exportJSON}>Export current architecture</Button>
-          <Button
-            variant="primary"
-            onClick={() => {
-              replace(sampleDocument());
-              setSection(null);
+        {templates && (
+          <ArchitectureTemplates
+            server={!!storage}
+            onExport={exportJSON}
+            onChoose={(document, destination) => {
+              replace(document);
               setLocked(false);
               setTemplates(false);
               setInspector(false);
+              setSection(destination === 'capacity' ? 'capacity' : null);
+              if (destination === 'capacity') setSidebar(false);
+              else if (destination === 'catalog') {
+                setSidebar(true);
+                setPanel('components');
+              }
               setTimeout(() => flow.fitView({ padding: 0.2 }), 100);
             }}
-          >
-            Use template
-          </Button>
-          <Button
-            onClick={() => {
-              replace(engineeringSampleDocument());
-              setLocked(false);
-              setTemplates(false);
-              setInspector(false);
-              setSection('capacity');
-              setSidebar(false);
-              setTimeout(() => flow.fitView({ padding: 0.2 }), 100);
-            }}
-          >
-            Use engineering example
-          </Button>
-          <Button
-            onClick={() => {
-              replace(infrastructureSampleDocument());
-              setLocked(false);
-              setTemplates(false);
-              setSidebar(true);
-              setSection(null);
-              setPanel('components');
-              void flow.fitView({ padding: 0.2 });
-            }}
-          >
-            Use infrastructure example
-          </Button>
-
-          <p className="field-hint">
-            Includes a workload scenario, flow policies, linked requirements and
-            illustrative capacity profiles. Example values are not measured
-            performance.
-          </p>
-        </div>
+          />
+        )}
       </Modal>
       <Modal
         open={custom}
@@ -1507,11 +1592,12 @@ function Editor({
         onOpenChange={setBrowser}
         title="Build your architecture"
         description="Every component adds meaning to your system."
+        initialFocusRef={componentSearch}
       >
         <div className="dialog-search">
           <Search size={18} />
           <input
-            autoFocus
+            ref={componentSearch}
             placeholder="Search components…"
             aria-label="Search components"
             value={query}
@@ -1555,39 +1641,11 @@ function Editor({
           </span>
         </div>
       </Modal>
-      <Modal
+      <CommandPalette
         open={palette}
         onOpenChange={setPalette}
-        title="Command palette"
-        description="Find an action or use its keyboard shortcut."
-      >
-        <div className="dialog-search">
-          <Search size={17} />
-          <input
-            autoFocus
-            aria-label="Search commands"
-            placeholder="What would you like to do?"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-        </div>
-        <div className="command-list">
-          {commands
-            .filter((c) => c.name.toLowerCase().includes(query.toLowerCase()))
-            .map((c) => (
-              <button
-                key={c.name}
-                onClick={() => {
-                  setPalette(false);
-                  c.run();
-                }}
-              >
-                <span>{c.name}</span>
-                <kbd>{c.hint}</kbd>
-              </button>
-            ))}
-        </div>
-      </Modal>
+        commands={commands}
+      />
       <Modal
         open={validation}
         onOpenChange={setValidation}

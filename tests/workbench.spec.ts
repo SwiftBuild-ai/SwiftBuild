@@ -239,7 +239,7 @@ test('narrow layout, modal focus and command palette', async ({
   await expect(page.getByLabel('Search commands')).toBeFocused();
   await page.getByLabel('Search commands').fill('add component');
   await page
-    .getByRole('button', { name: 'Add component A', exact: true })
+    .getByRole('option', { name: 'Add component A', exact: true })
     .click();
   await expect(
     page.getByRole('textbox', { name: 'Search components', exact: true }),
@@ -248,6 +248,227 @@ test('narrow layout, modal focus and command palette', async ({
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toHaveCount(0);
 });
+test('dialog dismissal restores its invoker and handoffs retain destination focus', async ({
+  page,
+}) => {
+  await ready(page, false);
+  const trigger = page.getByRole('button', {
+    name: 'Command palette',
+    exact: true,
+  });
+  await trigger.click();
+  await page.getByLabel('Search commands').press('Escape');
+  await expect(trigger).toBeFocused();
+  await page.keyboard.press('Control+k');
+  await page.getByLabel('Search commands').fill('add component');
+  await page
+    .getByRole('option', { name: 'Add component A', exact: true })
+    .click();
+  await expect(
+    page.getByRole('textbox', { name: 'Search components', exact: true }),
+  ).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(trigger).toBeFocused();
+  await page.getByRole('button', { name: 'Workspace settings' }).click();
+  await page.getByRole('button', { name: 'Close dialog' }).click();
+  await expect(
+    page.getByRole('button', { name: 'Workspace settings' }),
+  ).toBeFocused();
+  await page.getByRole('button', { name: 'Utilities', exact: true }).click();
+  await page.getByLabel('Search commands').fill('Open Capacity');
+  await page
+    .getByRole('option', { name: 'Open Capacity', exact: true })
+    .click();
+  await expect(
+    page.getByRole('main', { name: 'System architecture' }),
+  ).toBeFocused();
+});
+
+test('command palette supports ranked keyboard results and empty states', async ({
+  page,
+}) => {
+  await ready(page, false);
+  await page
+    .getByRole('button', { name: 'Command palette', exact: true })
+    .click();
+  const search = page.getByLabel('Search commands');
+  await expect(search).toHaveAttribute('role', 'combobox');
+  await expect(page.getByRole('option').first()).toContainText(
+    'Connect architecture objects',
+  );
+  await search.fill('add component');
+  await search.press('ArrowDown');
+  await expect(page.getByRole('option', { selected: true })).toContainText(
+    'Add component',
+  );
+  await search.press('Enter');
+  await expect(
+    page.getByRole('textbox', { name: 'Search components', exact: true }),
+  ).toBeFocused();
+  await page.keyboard.press('Escape');
+  await page
+    .getByRole('button', { name: 'Command palette', exact: true })
+    .click();
+  await search.fill('no-such-command');
+  await expect(
+    page.getByRole('status').filter({ hasText: 'No commands match' }),
+  ).toBeVisible();
+  await search.press('Enter');
+  await expect(
+    page.getByRole('dialog', { name: 'Command palette' }),
+  ).toBeVisible();
+  await search.fill('Add Load balancer');
+  await expect(page.getByRole('option')).toHaveCount(2);
+  await expect(page.getByRole('option').nth(0)).not.toHaveAttribute(
+    'id',
+    (await page.getByRole('option').nth(1).getAttribute('id')) ?? '',
+  );
+  await expect(page.getByRole('option').nth(0)).toContainText(
+    'generic.load-balancer',
+  );
+  await expect(page.getByRole('option').nth(1)).toContainText(
+    'core.load-balancer',
+  );
+});
+
+test('breakpoint changes dismiss the catalog and preserve deliberate toggles', async ({
+  page,
+}) => {
+  await ready(page, false);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(
+    page.getByRole('complementary', { name: 'Component catalog' }),
+  ).toHaveCount(0);
+  const trigger = page.getByRole('button', {
+    name: 'Show component catalog',
+    exact: true,
+  });
+  await trigger.click();
+  await expect(page.getByLabel('Search component catalog')).toBeFocused();
+  await page.getByLabel('Search component catalog').press('Escape');
+  await expect(trigger).toBeFocused();
+  await page.setViewportSize({ width: 760, height: 844 });
+  await expect(
+    page.getByRole('complementary', { name: 'Component catalog' }),
+  ).toHaveCount(0);
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await expect(
+    page.getByRole('complementary', { name: 'Component catalog' }),
+  ).toBeVisible();
+  await page
+    .getByRole('button', { name: 'Hide component catalog', exact: true })
+    .click();
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await expect(
+    page.getByRole('complementary', { name: 'Component catalog' }),
+  ).toHaveCount(0);
+});
+
+test('UI navigation does not write another workspace revision', async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    const tracking = window as typeof window & { workspaceWrites?: number };
+    tracking.workspaceWrites = 0;
+    const put = IDBObjectStore.prototype.put;
+    IDBObjectStore.prototype.put = function (value, key) {
+      if (this.name === 'workspace')
+        tracking.workspaceWrites = (tracking.workspaceWrites ?? 0) + 1;
+      return put.call(this, value, key);
+    };
+  });
+  await ready(page);
+  const before = await stored(page);
+  const writes = await page.evaluate(
+    () =>
+      (window as typeof window & { workspaceWrites?: number }).workspaceWrites,
+  );
+  await selectObject(page, 'Storefront API');
+  await page.getByRole('button', { name: 'Close inspector' }).click();
+  await page
+    .getByRole('button', { name: 'Command palette', exact: true })
+    .click();
+  await page.getByLabel('Search commands').fill('fit');
+  await page.getByLabel('Search commands').press('Escape');
+  await page
+    .getByRole('button', { name: 'Zoom controls', exact: true })
+    .click();
+  await page.getByRole('button', { name: 'Zoom in', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Zoom controls', exact: true })
+    .click();
+  await page.getByRole('button', { name: 'Workspace settings' }).click();
+  await page.getByRole('button', { name: 'Close dialog' }).click();
+  // Observe a full autosave debounce interval after the last UI interaction.
+  await page.waitForTimeout(600);
+  expect(await stored(page)).toEqual(before);
+  expect(
+    await page.evaluate(
+      () =>
+        (window as typeof window & { workspaceWrites?: number })
+          .workspaceWrites,
+    ),
+  ).toBe(writes);
+});
+
+test('empty workbench and controls fit responsive viewports in both themes', async ({
+  page,
+}, info) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await ready(page, false);
+  for (const theme of ['light', 'dark']) {
+    if (theme === 'dark') {
+      await page.getByRole('button', { name: 'Workspace settings' }).click();
+      await page.getByRole('button', { name: 'Switch to dark theme' }).click();
+      await page.getByRole('button', { name: 'Close dialog' }).click();
+    }
+    for (const width of [390, 760, 1024, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      const bounds = await page.locator('.empty-canvas').evaluate((element) => {
+        const card = element.getBoundingClientRect();
+        const main = element.closest('main')!.getBoundingClientRect();
+        const controls = document
+          .querySelector('.canvas-controls')!
+          .getBoundingClientRect();
+        const logs = document
+          .querySelector('.editor-bottom-left')!
+          .getBoundingClientRect();
+        return {
+          card: {
+            left: card.left,
+            right: card.right,
+            top: card.top,
+            bottom: card.bottom,
+          },
+          main: {
+            left: main.left,
+            right: main.right,
+            top: main.top,
+            bottom: main.bottom,
+          },
+          controls: {
+            left: controls.left,
+            right: controls.right,
+            top: controls.top,
+          },
+          logs: { right: logs.right },
+          scrollWidth: document.documentElement.scrollWidth,
+        };
+      });
+      expect(bounds.card.left).toBeGreaterThanOrEqual(bounds.main.left);
+      expect(bounds.card.right).toBeLessThanOrEqual(bounds.main.right);
+      expect(bounds.card.top).toBeGreaterThanOrEqual(bounds.main.top);
+      expect(bounds.card.bottom).toBeLessThan(bounds.controls.top);
+      expect(bounds.logs.right).toBeLessThanOrEqual(bounds.controls.left);
+      expect(bounds.controls.right).toBeLessThanOrEqual(width);
+      expect(bounds.scrollWidth).toBe(width);
+      await page.screenshot({
+        path: info.outputPath(`empty-${theme}-${width}.png`),
+      });
+    }
+  }
+});
+
 test('100-node import remains interactive and searchable', async ({ page }) => {
   const doc = sampleDocument();
   const prototype = doc.nodes[1]!;
@@ -421,4 +642,137 @@ test('canvas locking prevents layout movement and logs show actual saved work', 
   await expect(
     page.getByRole('region', { name: 'Activity log' }),
   ).toContainText('Saved draft');
+});
+
+test('template choices have distinct purposes and fit the annotated viewport', async ({
+  page,
+}, info) => {
+  await ready(page, false);
+  for (const width of [870, 390]) {
+    await page.setViewportSize({ width, height: 764 });
+    await page
+      .getByRole('navigation', { name: 'Editor tools' })
+      .getByRole('button', { name: 'Architecture templates', exact: true })
+      .click();
+    const dialog = page.getByRole('dialog', {
+      name: 'Architecture templates',
+      exact: true,
+    });
+    await expect(dialog.getByRole('article')).toHaveCount(3);
+    await expect(
+      dialog.getByRole('article').filter({ hasText: 'Engineering example' }),
+    ).toContainText('not measured performance');
+    for (const article of await dialog.getByRole('article').all()) {
+      const bounds = await article.evaluate((element) => {
+        const box = element.getBoundingClientRect();
+        const button = element.querySelector('button')!.getBoundingClientRect();
+        const modal = element.closest('[role="dialog"]')!;
+        return {
+          left: box.left,
+          right: box.right,
+          buttonHeight: button.height,
+          overflow: modal.scrollWidth > modal.clientWidth,
+        };
+      });
+      expect(bounds.left).toBeGreaterThanOrEqual(0);
+      expect(bounds.right).toBeLessThanOrEqual(width);
+      expect(bounds.buttonHeight).toBeLessThan(70);
+      expect(bounds.overflow).toBe(false);
+    }
+    await page.screenshot({ path: info.outputPath(`templates-${width}.png`) });
+    await dialog.getByRole('button', { name: 'Close dialog' }).click();
+  }
+  await page
+    .getByRole('navigation', { name: 'Editor tools' })
+    .getByRole('button', { name: 'Architecture templates', exact: true })
+    .click();
+  await page
+    .getByRole('button', { name: 'Use infrastructure example', exact: true })
+    .click();
+  await expect
+    .poll(async () => (await stored(page)).nodes.length)
+    .toBeGreaterThan(0);
+  await expect(page.locator('.react-flow__attribution')).toHaveCount(0);
+});
+
+test('detail modes change capabilities without changing the architecture and survive reload', async ({
+  page,
+}) => {
+  await ready(page);
+  const before = await stored(page);
+  await page.getByRole('button', { name: 'Workspace settings' }).click();
+  const mode = page.getByRole('group', { name: 'Display mode' });
+  await expect(mode).toContainText('Design');
+  await mode
+    .getByRole('button', { name: 'Engineering', exact: true })
+    .press('Enter');
+  await expect(
+    mode.getByRole('button', { name: 'Engineering', exact: true }),
+  ).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: 'Close dialog' }).click();
+  await expect(page.locator('.node-engineering').first()).toBeVisible();
+  await selectObject(page, 'Storefront API');
+  await expect(
+    page
+      .getByRole('complementary', { name: 'Component inspector' })
+      .locator('.capabilities'),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Close inspector' }).click();
+  expect(await stored(page)).toEqual(before);
+  await page.reload();
+  await expect(page.getByRole('status')).toHaveText('Saved locally');
+  await expect(page.locator('.node-engineering').first()).toBeVisible();
+  await page.getByRole('button', { name: 'Workspace settings' }).click();
+  await mode.getByRole('button', { name: 'Design', exact: true }).click();
+  await page.getByRole('button', { name: 'Close dialog' }).click();
+  await expect(page.locator('.node-engineering')).toHaveCount(0);
+  await expect(page.locator('.react-flow__attribution')).toHaveCount(0);
+  expect(await stored(page)).toEqual(before);
+});
+
+test('activity clearing requires confirmation, preserves the draft and records later saves', async ({
+  page,
+}) => {
+  await ready(page);
+  const before = await stored(page);
+  await page.getByRole('button', { name: 'Logs', exact: true }).click();
+  const log = page.getByRole('region', { name: 'Activity log' });
+  await expect(log).toContainText('Saved draft');
+  const clear = log.getByRole('button', { name: 'Clear log', exact: true });
+  await clear.click();
+  const confirmation = page.getByRole('dialog', {
+    name: 'Clear activity log?',
+    exact: true,
+  });
+  await expect(confirmation).toContainText('session');
+  await confirmation
+    .getByRole('button', { name: 'Cancel', exact: true })
+    .click();
+  await expect(clear).toBeFocused();
+  await expect(log).toContainText('Saved draft');
+  await clear.click();
+  await page.keyboard.press('Escape');
+  await expect(confirmation).toHaveCount(0);
+  await expect(clear).toBeFocused();
+  await clear.click();
+  await confirmation
+    .getByRole('button', { name: 'Clear log', exact: true })
+    .click();
+  await expect(confirmation).toHaveCount(0);
+  await expect(log).toContainText('No save activity');
+  await expect(clear).toBeDisabled();
+  await expect(
+    log.getByRole('button', { name: 'Close activity' }),
+  ).toBeFocused();
+  expect(await stored(page)).toEqual(before);
+  await page
+    .getByLabel('Architecture name', { exact: true })
+    .fill('A new saved edit');
+  await page.getByLabel('Architecture name', { exact: true }).press('Enter');
+  await expect
+    .poll(async () => (await stored(page)).architecture.name)
+    .toBe('A new saved edit');
+  await expect(page.getByRole('status')).toHaveText('Saved locally');
+  await expect(log).toContainText('Saved draft');
+  await expect(clear).toBeEnabled();
 });

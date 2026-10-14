@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+import { readFile } from 'node:fs/promises';
 import { engineeringSampleDocument } from '@swiftbuild/components-core';
 
 import { fixture, queueFixture } from './fixture.test.data';
@@ -14,6 +15,46 @@ const options = {
   maxEvents: 100000,
   maxWallTimeMs: 10000,
 };
+it('imports the tracked illustrative measurement examples without changing provenance', async () => {
+  const profile = fixture().performanceProfiles[0]!;
+  const sampleRaw = await readFile(
+    new URL(
+      '../../../examples/measurements/service-samples.csv',
+      import.meta.url,
+    ),
+    'utf8',
+  );
+  const curveRaw = await readFile(
+    new URL(
+      '../../../examples/measurements/capacity-curve.csv',
+      import.meta.url,
+    ),
+    'utf8',
+  );
+  const samples = importMeasurementsCSV(sampleRaw, profile);
+  const curve = importMeasurementsCSV(curveRaw, profile);
+  expect(samples.serviceTime).toEqual({
+    kind: 'empirical',
+    samplesMs: [10, 12, 18],
+  });
+  expect(curve.capacityCurve).toEqual([
+    {
+      requestsPerSecond: 10,
+      meanLatencyMs: 12,
+      p95LatencyMs: 20,
+      p99LatencyMs: 30,
+    },
+    {
+      requestsPerSecond: 20,
+      meanLatencyMs: 18,
+      p95LatencyMs: 35,
+      p99LatencyMs: 50,
+    },
+  ]);
+  expect(samples.provenance).toEqual(profile.provenance);
+  expect(curve.provenance).toEqual(profile.provenance);
+  expect(profile.provenance.kind).toBe('illustrative');
+});
 it('keeps writes on the primary at cache-hit extremes', () => {
   const d = engineeringSampleDocument();
   d.performanceProfiles.find((p) => p.model === 'cache')!.cacheHitRatio = 1;

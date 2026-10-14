@@ -23,6 +23,6 @@ requests_per_second,mean_latency_ms,p95_latency_ms,p99_latency_ms
 20,18,35,50
 ```
 
-The first two columns are required; percentile columns are optional. Rates must be strictly increasing, all values finite and nonnegative, and curves contain at most 1,000 points. Quotes, escaped quotes, CRLF and a UTF-8 BOM are accepted. Unknown/duplicate columns, malformed quotes and inconsistent row widths are rejected.
+The first two columns are required; percentile columns are optional. Rates must be strictly increasing, all values finite and nonnegative, and curves contain at most 1,000 points. Quotes, escaped quotes, CRLF and a UTF-8 BOM are accepted. After a closing quote, only spaces or tabs may precede a delimiter, line ending or end of file. Unknown/duplicate columns, malformed quotes and inconsistent row widths are rejected. Quote errors identify the source row and field; decoded numeric cells must still be finite numbers.
 
 Curve latency must describe the local operating context claimed by the profile. Do not substitute end-to-end latency for local service demand. Compare measured observations against simulation results and revise assumptions rather than extrapolating outside measured ranges.

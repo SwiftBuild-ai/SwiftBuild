@@ -7,9 +7,10 @@ import pytest
 from psycopg.errors import UndefinedTable
 
 from swiftbuild_backend.config import Settings
-from swiftbuild_backend.database import MIGRATIONS, all_rows, migrate
+from swiftbuild_backend.database import MIGRATIONS, all_rows, migrate, one
 from swiftbuild_backend.errors import ServiceError
-from swiftbuild_backend.identity import Identity, issue_invitation
+from swiftbuild_backend.identity import Identity, issue_invitation, verify_password
+import swiftbuild_backend.identity as identity_module
 from swiftbuild_backend.projects import Projects
 from test_compatibility import fixture
 
@@ -155,3 +156,107 @@ async def test_database_rate_limit(pool):
     with pytest.raises(ServiceError) as rejected:
         await identity.rate_limit('sign-in/email', '127.0.0.1')
     assert rejected.value.status == 429
+
+
+async def test_reset_committed_during_sign_in_rejects_obsolete_credentials(pool, monkeypatch):
+    identity, _, _, _ = await owner(pool)
+    recovery = await identity.issue_recovery('owner@example.test')
+    verified, resume = asyncio.Event(), asyncio.Event()
+    original = identity.password
+
+    async def paused(function, *args):
+        result = await original(function, *args)
+        if function is verify_password:
+            verified.set()
+            await resume.wait()
+        return result
+
+    monkeypatch.setattr(identity, 'password', paused)
+    signing_in = asyncio.create_task(
+        identity.sign_in('owner@example.test', 'synthetic password for tests')
+    )
+    try:
+        await asyncio.wait_for(verified.wait(), 5)
+        await identity.reset_password(recovery, 'replacement synthetic password')
+    finally:
+        resume.set()
+    with pytest.raises(ServiceError) as rejected:
+        await signing_in
+    assert rejected.value.status == 401
+    async with pool.connection() as c:
+        assert await all_rows(c, 'SELECT id FROM sb_auth_sessions') == []
+
+
+async def test_pending_revocation_blocks_save_then_rejects_it(pool):
+    _, store, user, workspace = await owner(pool)
+    archive = fixture('archive')['archive']
+    project = await store.create_project(user, workspace, archive, str(uuid4()))
+    edited = copy.deepcopy(archive)
+    edited['document']['project']['name'] = 'Must not be saved'
+    saving = None
+    try:
+        async with pool.connection() as revoker:
+            async with revoker.transaction():
+                pid = (await one(revoker, 'SELECT pg_backend_pid() AS pid'))['pid']
+                await revoker.execute(
+                    "UPDATE sb_members SET role='viewer' WHERE user_id=%s AND workspace_id=%s",
+                    (user, workspace),
+                )
+                saving = asyncio.create_task(
+                    store.save_project(user, project['id'], 1, edited, str(uuid4()))
+                )
+                blocked = False
+                for _ in range(100):
+                    async with pool.connection() as inspector:
+                        blocked = (
+                            await one(
+                                inspector,
+                                'SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE %s=ANY(pg_blocking_pids(pid))) AS blocked',
+                                (pid,),
+                            )
+                        )['blocked']
+                    if blocked:
+                        break
+                    await asyncio.sleep(0.01)
+                assert blocked, 'Save must wait for the authoritative membership transaction.'
+        with pytest.raises(ServiceError) as rejected:
+            await asyncio.wait_for(saving, 5)
+        assert rejected.value.status == 403
+        assert (await store.read_project(user, project['id']))['revision'] == 1
+    finally:
+        if saving and not saving.done():
+            saving.cancel()
+            await asyncio.gather(saving, return_exceptions=True)
+
+
+async def test_concurrent_recovery_creates_only_one_credential_for_provider_account(
+    pool, monkeypatch
+):
+    identity, _, user, _ = await owner(pool)
+    async with pool.connection() as c:
+        await c.execute('DELETE FROM sb_auth_accounts WHERE "userId"=%s', (user,))
+        await c.execute(
+            'INSERT INTO sb_auth_accounts(id,"accountId","providerId","userId","updatedAt") VALUES (%s,%s,\'organization\',%s,now())',
+            (str(uuid4()), 'synthetic-provider-account', user),
+        )
+    tokens = [await identity.issue_recovery('owner@example.test') for _ in range(2)]
+    original = identity_module.one
+
+    async def slow_empty_lookup(connection, statement, params=()):
+        result = await original(connection, statement, params)
+        if statement.startswith('SELECT id FROM sb_auth_accounts') and not result:
+            # Give a competing transaction time to observe the same absent row.
+            await asyncio.sleep(0.1)
+        return result
+
+    monkeypatch.setattr(identity_module, 'one', slow_empty_lookup)
+    await asyncio.gather(
+        *(identity.reset_password(token, 'replacement synthetic password') for token in tokens)
+    )
+    async with pool.connection() as c:
+        rows = await all_rows(
+            c,
+            'SELECT id FROM sb_auth_accounts WHERE "userId"=%s AND "providerId"=\'credential\'',
+            (user,),
+        )
+    assert len(rows) == 1

@@ -293,12 +293,27 @@ class Identity:
         async with transaction(self.pool) as c:
             if token:
                 await c.execute('SELECT pg_advisory_xact_lock(%s)', (BOOTSTRAP_LOCK,))
+            # Hashing runs outside the transaction. Hold user/account locks before
+            # issuing a session so reset/unlink cannot invalidate its credential
+            # between verification and commit. User first matches account unlink.
+            await c.execute('SELECT id FROM sb_auth_users WHERE id=%s FOR KEY SHARE', (row['id'],))
             if not await active(c, row['id'], True):
                 if not token:
                     raise ServiceError(401, 'Invalid credentials.')
                 await admit(c, row['id'], address, token)
             elif token and await invitation(c, address, token):
                 await admit(c, row['id'], address, token)
+            credential = await one(
+                c,
+                'SELECT password FROM sb_auth_accounts WHERE "userId"=%s AND "providerId"=\'credential\' FOR SHARE',
+                (row['id'],),
+            )
+            if (
+                not credential
+                or not isinstance(credential['password'], str)
+                or not hmac.compare_digest(credential['password'], encoded)
+            ):
+                raise ServiceError(401, 'Invalid credentials.', 'INVALID_EMAIL_OR_PASSWORD')
             session_token = await self.new_session(c, row['id'])
         return session_token, {
             'redirect': False,
@@ -350,7 +365,12 @@ class Identity:
                 'DELETE FROM sb_auth_verifications WHERE identifier=%s AND "expiresAt">now() RETURNING value',
                 (verification_key(token),),
             )
-            if not row or not await active(c, row['value'], True):
+            if not row:
+                raise ServiceError(400, 'Invalid token.', 'INVALID_TOKEN')
+            # A provider-only account has no credential row to lock yet. Serialize
+            # on its user row so concurrent valid links cannot create duplicates.
+            await c.execute('SELECT id FROM sb_auth_users WHERE id=%s FOR UPDATE', (row['value'],))
+            if not await active(c, row['value'], True):
                 raise ServiceError(400, 'Invalid token.', 'INVALID_TOKEN')
             account = await one(
                 c,
@@ -401,6 +421,8 @@ class Identity:
     async def change_password(self, session, body):
         from datetime import datetime, timezone
 
+        if type(body.get('revokeOtherSessions', False)) is not bool:
+            raise ValueError('Session revocation must be a boolean.')
         if (datetime.now(timezone.utc) - session['session']['createdAt']).total_seconds() > 300:
             raise ServiceError(401, 'A fresh sign-in is required.')
         user_id = session['user']['id']

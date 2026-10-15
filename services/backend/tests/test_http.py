@@ -1,8 +1,11 @@
 import copy
+import asyncio
+from contextlib import asynccontextmanager
 from uuid import uuid4
 
 import httpx
 import pytest
+from psycopg import OperationalError
 
 from swiftbuild_backend.config import Settings
 from swiftbuild_backend.http import create_app
@@ -131,6 +134,126 @@ async def test_registration_requires_the_actual_invitation_token(pool, settings)
             },
         )
         assert response.status_code == 403
+
+
+async def test_deep_json_is_a_bounded_client_error(pool, settings):
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(create_app(settings, pool=pool)),
+        base_url=settings.origin,
+        headers={'origin': settings.origin},
+    ) as client:
+        result = await client.post(
+            '/api/auth/sign-up/email',
+            content=b'[' * 5000 + b'0' + b']' * 5000,
+            headers={'content-type': 'application/json'},
+        )
+        assert result.status_code == 400
+        assert result.headers['cache-control'] == 'no-store'
+        assert result.headers['x-request-id']
+
+
+async def test_password_change_requires_a_boolean_revocation_flag(pool, settings):
+    identity, _, _, _ = await owner(pool)
+    token, _ = await identity.sign_in('owner@example.test', 'synthetic password for tests')
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(create_app(settings, pool=pool)),
+        base_url=settings.origin,
+        headers={'origin': settings.origin},
+        cookies={'swiftbuild.session': token},
+    ) as client:
+        result = await client.post(
+            '/api/auth/change-password',
+            json={
+                'currentPassword': 'synthetic password for tests',
+                'newPassword': 'replacement synthetic password',
+                'revokeOtherSessions': 'false',
+            },
+        )
+        assert result.status_code == 400
+    assert await identity.sign_in('owner@example.test', 'synthetic password for tests')
+
+
+async def test_workspace_names_are_trimmed_before_length_validation(pool, settings):
+    identity, _, _, _ = await owner(pool)
+    token, _ = await identity.sign_in('owner@example.test', 'synthetic password for tests')
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(create_app(settings, pool=pool)),
+        base_url=settings.origin,
+        headers={'origin': settings.origin},
+        cookies={'swiftbuild.session': token},
+    ) as client:
+        for case in fixture('names'):
+            result = await client.post('/api/v1/workspaces', json={'name': case['value']})
+            assert result.status_code == (201 if case['valid'] else 400)
+            if case['valid']:
+                assert result.json()['name'] == case['output']
+
+
+async def test_readiness_fails_closed_and_recovers_without_affecting_liveness(
+    pool, settings, monkeypatch
+):
+    app = create_app(settings, pool=pool)
+    original = pool.connection
+
+    @asynccontextmanager
+    async def unavailable():
+        raise OperationalError('Synthetic connection failure with private connection information')
+        yield
+
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app),
+        base_url=settings.origin,
+    ) as client:
+        monkeypatch.setattr(pool, 'connection', unavailable)
+        assert (await client.get('/api/health')).status_code == 200
+        failed = await client.get('/api/v1/ready')
+        assert failed.status_code == 503
+        assert failed.json()['error']['code'] == 'STORAGE_UNAVAILABLE'
+        assert 'private connection information' not in failed.text
+        assert failed.headers['cache-control'] == 'no-store'
+        assert failed.headers['x-request-id']
+        monkeypatch.setattr(pool, 'connection', original)
+        assert (await client.get('/api/v1/ready')).status_code == 200
+
+
+async def test_project_pagination_preserves_microseconds_and_equal_timestamp_ties(pool, settings):
+    identity, store, user, workspace = await owner(pool)
+    archive = fixture('archive')['archive']
+    slots = asyncio.Semaphore(4)
+
+    async def create():
+        async with slots:
+            return await store.create_project(user, workspace, archive, str(uuid4()))
+
+    projects = await asyncio.gather(*(create() for _ in range(101)))
+    async with pool.connection() as c:
+        await c.execute(
+            "UPDATE sb_projects SET updated_at='2026-10-15T00:00:00.123456Z' WHERE workspace_id=%s",
+            (workspace,),
+        )
+    token, _ = await identity.sign_in('owner@example.test', 'synthetic password for tests')
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(create_app(settings, pool=pool)),
+        base_url=settings.origin,
+        cookies={'swiftbuild.session': token},
+    ) as client:
+        first = await client.get('/api/v1/projects', params={'workspaceId': workspace})
+        assert first.status_code == 200
+        page = first.json()
+        assert len(page['items']) == 100
+        assert page['nextCursor']['updatedAt'] == '2026-10-15T00:00:00.123456Z'
+        second = await client.get(
+            '/api/v1/projects',
+            params={
+                'workspaceId': workspace,
+                'afterId': page['nextCursor']['id'],
+                'beforeUpdatedAt': page['nextCursor']['updatedAt'],
+            },
+        )
+        assert second.status_code == 200
+        assert len(second.json()['items']) == 1 and second.json()['nextCursor'] is None
+        ids = [p['id'] for p in page['items'] + second.json()['items']]
+        assert ids == sorted((p['id'] for p in projects), reverse=True)
 
 
 async def test_account_management_revokes_other_sessions_and_preserves_last_method(pool, settings):

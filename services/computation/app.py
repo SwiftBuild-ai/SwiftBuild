@@ -1,4 +1,4 @@
-"""Private computation supervisor. Durable scheduling belongs to TypeScript."""
+"""Private computation supervisor. Durable scheduling belongs to the Python backend."""
 import asyncio
 import hashlib
 import json

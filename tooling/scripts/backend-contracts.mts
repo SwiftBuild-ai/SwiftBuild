@@ -77,6 +77,26 @@ await output('swiftbuild_backend/contracts/computation.json', {
     .digest('hex'),
 });
 await output(
+  'tests/fixtures/names.json',
+  [
+    ' Workspace ',
+    '\uFEFF Workspace \uFEFF',
+    '\u0085Workspace\u0085',
+    '\uFEFF',
+    '\u0085',
+    ' '.repeat(120) + 'Workspace' + ' '.repeat(120),
+    '😀'.repeat(60),
+    '😀'.repeat(61),
+    'a'.repeat(120),
+    'a'.repeat(121),
+  ].map((value) => {
+    const parsed = z.string().trim().min(1).max(120).safeParse(value);
+    return parsed.success
+      ? { value, valid: true, output: parsed.data }
+      : { value, valid: false };
+  }),
+);
+await output(
   'swiftbuild_backend/contracts/schemas.json',
   Object.fromEntries(
     Object.entries({
@@ -121,6 +141,12 @@ for (const [name, mutate] of Object.entries({
   },
   invalidConfiguration: (d: typeof base) => {
     d.nodes[1]!.configuration = {};
+  },
+  unicodeNameWithinLimit: (d: typeof base) => {
+    d.project.name = '😀'.repeat(120);
+  },
+  unicodeNameExceedsLimit: (d: typeof base) => {
+    d.project.name = '😀'.repeat(121);
   },
   unsupportedVersion: (d: typeof base) => {
     (d as unknown as { schemaVersion: string }).schemaVersion = '9.0';

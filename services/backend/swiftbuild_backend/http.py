@@ -22,7 +22,7 @@ from .domain import MAX_ARCHIVE_BYTES, MAX_COMPUTATION_BYTES, validate_archive
 from .errors import ServiceError
 from .identity import COOKIE, Identity
 from .jobs import Jobs
-from .projects import Projects, identifier
+from .projects import Projects, identifier, name as normalized_name
 from .serialization import js_json
 
 log = logging.getLogger('swiftbuild')
@@ -39,7 +39,7 @@ class Input(BaseModel):
 
 
 class WorkspaceInput(Input):
-    name: str = Field(min_length=1, max_length=120)
+    name: Annotated[str, BeforeValidator(normalized_name)] = Field(min_length=1, max_length=120)
 
 
 class CreateProjectInput(Input):
@@ -227,7 +227,7 @@ class Boundaries:
                         raise ValueError('Non-finite JSON.')
 
                     json.loads(raw.decode('utf-8'), parse_constant=invalid_constant)
-                except (ValueError, UnicodeError):
+                except (ValueError, UnicodeError, RecursionError):
                     return await respond(400, 'INVALID_JSON', 'Input must be valid UTF-8 JSON.')
             original_receive, delivered = receive, False
 
@@ -332,6 +332,7 @@ def create_app(settings: Settings, *, pool=None):
     app.add_exception_handler(RequestValidationError, invalid_input)
     app.add_exception_handler(ValueError, invalid_input)
     app.add_exception_handler(SchemaError, invalid_input)
+    app.add_exception_handler(RecursionError, invalid_input)
 
     async def session(request: Request):
         result = await identity.session(request.cookies.get(COOKIE))

@@ -6,7 +6,7 @@ from psycopg.types.json import Jsonb
 from .database import all_rows, one, transaction
 from .domain import validate_archive
 from .errors import ServiceError, conflict
-from .serialization import project_digest, utf16
+from .serialization import js_trim, project_digest
 
 
 def identifier(value):
@@ -31,9 +31,9 @@ def actor(value):
 
 
 def name(value):
-    if not isinstance(value, str) or not 1 <= len(utf16(value.strip())) // 2 <= 120:
+    if not isinstance(value, str) or not 1 <= len(js_trim(value)) <= 120:
         raise ValueError('Invalid name.')
-    return value.strip()
+    return js_trim(value)
 
 
 async def access(c, user_id, workspace_id, write=False):

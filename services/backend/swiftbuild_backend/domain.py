@@ -5,26 +5,16 @@ import json
 import math
 from pathlib import Path
 
-from jsonschema import Draft202012Validator, FormatChecker, ValidationError, validators
+from jsonschema import Draft202012Validator, FormatChecker, ValidationError
 
-from .serialization import js_json, utf16
+from .serialization import js_json, js_trim
 
 SCHEMAS = json.loads((Path(__file__).parent / 'contracts/schemas.json').read_text('utf-8'))
 MAX_ARCHIVE_BYTES = 50 * 1024 * 1024
 MAX_COMPUTATION_BYTES = 8 * 1024 * 1024
 
 
-def _minimum(validator, size, value, schema):
-    if isinstance(value, str) and len(utf16(value)) // 2 < size:
-        yield ValidationError('String is too short.')
-
-
-def _maximum(validator, size, value, schema):
-    if isinstance(value, str) and len(utf16(value)) // 2 > size:
-        yield ValidationError('String is too long.')
-
-
-Validator = validators.extend(Draft202012Validator, {'minLength': _minimum, 'maxLength': _maximum})
+Validator = Draft202012Validator
 
 
 def _validator(schema):
@@ -108,7 +98,7 @@ def configuration_errors(definition, configuration):
         if kind == 'boolean' and type(value) is not bool:
             errors.append(f'{label} must be true or false.')
         if kind == 'string' and (
-            not isinstance(value, str) or (field['required'] and not value.strip())
+            not isinstance(value, str) or (field['required'] and not js_trim(value))
         ):
             errors.append(f'{label} must be text.')
         if kind == 'select' and value not in field.get('options', []):

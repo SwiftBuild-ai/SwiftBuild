@@ -107,9 +107,22 @@ def provider():
                 'exp': now + 120,
             }
             bad = state['bad']
-            if bad:
+            if bad == 'exp':
+                claims['exp'] = now - 3600
+            elif bad and bad != 'signature':
                 claims[bad] = False if bad == 'email_verified' else 'incorrect-value'
-            token = jwt.encode({'alg': 'RS256', 'kid': 'swiftbuild-fixture'}, claims, pem).decode()
+            signing_key = pem
+            if bad == 'signature':
+                signing_key = rsa.generate_private_key(
+                    public_exponent=65537, key_size=2048
+                ).private_bytes(
+                    serialization.Encoding.PEM,
+                    serialization.PrivateFormat.PKCS8,
+                    serialization.NoEncryption(),
+                )
+            token = jwt.encode(
+                {'alg': 'RS256', 'kid': 'swiftbuild-fixture'}, claims, signing_key
+            ).decode()
             self.send_json(
                 {
                     'access_token': 'synthetic-provider-token',
@@ -142,7 +155,7 @@ async def sign_in(client, path='sign-in/social'):
     return await client.get(redirect.headers['location'])
 
 
-@pytest.mark.parametrize('bad', [None, 'aud', 'iss', 'nonce', 'email_verified'])
+@pytest.mark.parametrize('bad', [None, 'aud', 'iss', 'nonce', 'email_verified', 'signature', 'exp'])
 async def test_oidc_signed_claims_pkce_and_admission(pool, provider, bad):
     provider['bad'] = bad
     settings = Settings(
@@ -202,3 +215,41 @@ async def test_oidc_existing_email_requires_explicit_authenticated_linking(pool,
         accounts = (await client.get('/api/auth/list-accounts')).json()
         assert {a['providerId'] for a in accounts} == {'credential', 'organization'}
         assert all('accessToken' not in a and 'password' not in a for a in accounts)
+
+
+async def test_oidc_rejects_tampered_state_and_callback_replay(pool, provider):
+    settings = Settings(
+        '',
+        'http://localhost:3000',
+        'synthetic-test-secret-' * 3,
+        True,
+        oidc_discovery_url=provider['issuer'] + '/discovery',
+        oidc_client_id='swiftbuild-fixture',
+        oidc_client_secret='synthetic-client-secret',
+    )
+    app = create_app(settings, pool=pool)
+    await issue_invitation(pool, 'owner@example.test', bootstrap=True)
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app),
+        base_url=settings.origin,
+        headers={'origin': settings.origin},
+    ) as client:
+        started = await client.post('/api/auth/sign-in/social', json={'provider': 'organization'})
+        async with httpx.AsyncClient() as external:
+            authorization = await external.get(started.json()['url'])
+        callback = authorization.headers['location']
+        parsed = urlsplit(callback)
+        query = parse_qs(parsed.query)
+        forged = parsed._replace(
+            query=urlencode(
+                {
+                    'code': query['code'][0],
+                    'state': 'tampered-state',
+                }
+            )
+        ).geturl()
+        assert (await client.get(forged)).status_code == 403
+        assert provider['verifiedChallenges'] == 0
+        assert (await client.get(callback)).status_code == 302
+        assert (await client.get(callback)).status_code == 403
+        assert provider['verifiedChallenges'] == 1

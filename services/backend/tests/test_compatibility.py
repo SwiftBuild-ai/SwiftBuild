@@ -29,6 +29,17 @@ def test_legacy_email_acceptance():
                 email(case['value'])
 
 
+def test_legacy_name_normalization_and_unicode_lengths():
+    from swiftbuild_backend.projects import name
+
+    for case in fixture('names'):
+        if case['valid']:
+            assert name(case['value']) == case['output']
+        else:
+            with pytest.raises(ValueError):
+                name(case['value'])
+
+
 @pytest.mark.parametrize('case', fixture('documents'), ids=lambda c: c['name'])
 def test_document_compatibility(case):
     original = copy.deepcopy(case['input'])

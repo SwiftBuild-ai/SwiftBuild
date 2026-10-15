@@ -17,3 +17,7 @@ services/computation/contracts.json
 services/computation/.venv/
 services/computation/.pytest_cache/
 **/.pytest_cache/
+services/backend/swiftbuild_backend/contracts/
+services/backend/tests/fixtures/
+services/backend/openapi.json
+services/backend/.venv/

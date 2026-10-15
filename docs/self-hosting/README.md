@@ -1,5 +1,7 @@
 # Self-hosting SwiftBuild
 
+Optional server mode now runs the [native Python backend](../../services/backend/README.md) alongside Next.js. Configure `SWIFTBUILD_BACKEND_URL` in the web process, install Python dependencies and run `pnpm backend:dev` in a separate terminal with private database/identity settings. Operator wrappers below use Python. Existing Docker files remain unchanged; the optional full-server container recipes are not qualified for this conversion. Browser-local mode remains independent.
+
 ## Run the current application
 
 Use a container engine supporting Linux containers and run:

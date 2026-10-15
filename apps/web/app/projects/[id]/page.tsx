@@ -1,9 +1,8 @@
 import { notFound, redirect } from 'next/navigation';
-import { ProjectError } from '@swiftbuild/server-core';
 import { AccountShell } from '../../../components/account-shell';
 import { ServerEditor } from '../../../components/server-editor';
 import { accountContext } from '../../../server/account';
-import { backend } from '../../../server/backend';
+import { backend, BackendError } from '../../../server/backend';
 export const dynamic = 'force-dynamic';
 export const metadata = {
   title: 'Server project — SwiftBuild',
@@ -30,7 +29,7 @@ export default async function Project({
         id,
       );
     } catch (failure) {
-      if (failure instanceof ProjectError && failure.status === 404) notFound();
+      if (failure instanceof BackendError && failure.status === 404) notFound();
     }
   }
   if (project && context.state === 'ready' && context.session)

@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools==80.9.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "swiftbuild-backend"
+version = "0.1.0"
+requires-python = ">=3.12,<3.13"
+dynamic = ["dependencies"]
+
+[project.scripts]
+swiftbuild-operator = "swiftbuild_backend.cli:main"
+swiftbuild-worker = "swiftbuild_backend.worker:main"
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
+
+[tool.setuptools.package-data]
+swiftbuild_backend = ["contracts/*.json", "generated/*.py"]
+
+[tool.setuptools.packages.find]
+include = ["swiftbuild_backend*"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+extend-exclude = ["swiftbuild_backend/generated"]
+
+[tool.ruff.format]
+quote-style = "single"

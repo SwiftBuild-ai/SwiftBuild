@@ -1,5 +1,7 @@
 # Operator backup and recovery drills
 
+These commands now run through the [native Python operator](../../services/backend/README.md). Install matching local PostgreSQL client tools and use the native commands or pnpm wrappers. The Docker invocation below is a retained legacy recipe awaiting the deferred deployment update; it is not qualified for the FastAPI conversion.
+
 SwiftBuild provides private operator commands for binary-safe database backups, offline integrity verification and isolated restoration drills. This tooling has local boundary-test/build coverage; the required hosted CI deployment smoke supplies database/container acceptance while local Docker remains stopped. See the [verification record](../status.md). They do not switch a live deployment, delete databases, back up browser drafts, or establish production disaster recovery certification.
 
 Use the PostgreSQL tools supplied by the full-server operations image, or install tools matching the recorded PostgreSQL major version. Set the private administrator `DATABASE_URL`. Backup tooling passes credentials through the subprocess environment rather than command arguments and uses a ten-minute timeout per PostgreSQL tool. Backups contain accounts, sessions and architecture data: keep the backup directory and identity configuration private.

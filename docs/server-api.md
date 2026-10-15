@@ -1,5 +1,7 @@
 # SwiftBuild server API
 
+FastAPI in [services/backend](../services/backend/README.md) owns these HTTP contracts. Next.js forwards same-origin requests and cookies through a typed server-only adapter. Generated OpenAPI and frontend types are checked by `pnpm backend:check`. The legacy TypeScript server remains only as a compatibility reference; see [ownership decision](adr/0012-python-backend.md).
+
 ## Engineering computation jobs
 
 All job routes live under `/api/v1/projects/PROJECT_ID/jobs`. They use the existing session, same-origin mutation, no-store and request-ID policies. Owners/editors submit/cancel/import; viewers read/export. Absent or cross-workspace membership is hidden as not found. Backend actors never come from payloads.
@@ -7,7 +9,7 @@ All job routes live under `/api/v1/projects/PROJECT_ID/jobs`. They use the exist
 - `POST /jobs`: strong `If-Match` current revision, `{operationId, input, imported?: false}`. Normal input is `{definition, seed?: 42, samples?: 10000, deadlineMs?: 120000}`. Returns the durable job with status 202. Repeated operation IDs return the same job; changed input is rejected. Stale revisions return 412.
 - `GET /jobs?before=JOB_ID`: newest-first metadata pages of at most 100 entries and `nextCursor`; full inputs/reports are fetched only through detail/export. `GET /jobs/JOB_ID` returns authorized detail.
 - `POST /jobs/JOB_ID/cancel`: accepts cancellation. Queued work cancels immediately; running work enters cancelling and cannot publish a later successful result.
-- `GET /jobs/JOB_ID/export`: versioned `swiftbuild-analysis` bundle with original execution inputs and report. Successful capacity bundles include TypeScript engine samples and their fingerprints.
+- `GET /jobs/JOB_ID/export`: versioned `swiftbuild-analysis` bundle with original execution inputs and report. Successful capacity bundles include Python engine samples and their fingerprints; browser-local samples retain their original implementation provenance.
 - `POST /jobs` with `{operationId, imported: true, input: BUNDLE}`: validates and stores a historical bundle for the same project and an existing referenced revision. `If-Match` still identifies the current project revision. Imports never enter the execution queue.
 
 Schemas live in `@swiftbuild/architecture-schema/analysis` and `@swiftbuild/computation-contracts`; committed JSON Schema generates Python types. Contract, bundle and numerical model versions are independent. Input/results are bounded to 8 MiB. Queue admission is limited to ten queued jobs per workspace and one active job per workspace.

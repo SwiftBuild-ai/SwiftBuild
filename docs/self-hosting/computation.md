@@ -1,5 +1,7 @@
 # Server deployment and engineering workers
 
+The current web host uses the [Python backend](../../services/backend/README.md). Docker/deployment updates are deferred; container commands in this guide describe the retained legacy setup and are not qualified for the new topology. For native development, run the backend API and Python worker with database/identity settings, and run the private numerical supervisor without those credentials. `pnpm computation:worker` now starts the Python dispatcher. The TypeScript domain engines remain available for browser-local editing and simulations.
+
 Default `docker compose up --build` still runs browser-local mode. For server projects and engineering computations, copy `server.env.example` to ignored `server.env`, generate separate private hexadecimal passwords/tokens, and keep the identity secret stable. Hexadecimal passwords avoid connection-URL escaping ambiguity. Never use the example values for a deployment.
 
 ```sh

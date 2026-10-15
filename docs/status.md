@@ -1,5 +1,13 @@
 # SwiftBuild current status
 
+## FastAPI backend conversion on October 15, 2026
+
+Python now owns public APIs, identity, SQL repositories/migrations, server capacity analysis/simulation, durable job dispatch and native operator commands. The web shell uses a typed HTTP adapter without a server-core runtime dependency. Native/archive formats, existing migration SQL/checksums, account/password/provider identities, revision and retry records remain compatible. Active legacy sessions may require sign-in again. The legacy package remains temporarily for compatibility references and deferred Docker tooling. See [ownership decision](adr/0012-python-backend.md) and [native setup](../services/backend/README.md).
+
+Local verification used an isolated PostgreSQL 16 database and matching native recovery tools without Docker: all 94 Python backend tests passed, including signed OIDC fixtures, numerical parity, transactional storage/jobs, actual backup/restore and operator execution with Node absent from PATH. `pnpm verify` passed formatting, documentation links, lint/boundaries, types, 12 tooling tests, all 151 TypeScript tests with no skips and the production build. Backend lint and generated-contract drift checks passed separately; the existing numerical service's 14 Python tests passed. All 31 browser-local tests and all five dedicated server browser tests passed against FastAPI, including numerical jobs. The browser-local configuration intentionally excludes the five server tests; they passed separately.
+
+Docker/deployment changes, production routing, zero-downtime certification and UX implementation remain deferred. Scoped audit observations for later work are small labels in fitted canvases and an Engineering analysis prerequisite screen without an actionable next step. Captures are local under ignored `.agent-work/fastapi-audit`; broader accessibility claims need additional testing.
+
 ## Annotated workbench controls on October 13, 2026
 
 Template selection now presents three separate purpose-labeled examples, document-derived component/connection counts, aligned actions and a replacement warning outside the cards. Engineering values remain illustrative. The canvas attribution badge is omitted through the adapter's supported option; the original dependency copyright/permission notice remains bundled in the web distribution.

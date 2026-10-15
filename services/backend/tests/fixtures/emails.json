@@ -1,0 +1,50 @@
+[
+  {
+    "value": "Owner@Example.Test",
+    "valid": true
+  },
+  {
+    "value": "a+b@example.test",
+    "valid": true
+  },
+  {
+    "value": "a'b@example.test",
+    "valid": true
+  },
+  {
+    "value": ".a@example.test",
+    "valid": false
+  },
+  {
+    "value": "a..b@example.test",
+    "valid": false
+  },
+  {
+    "value": "a.@example.test",
+    "valid": false
+  },
+  {
+    "value": "a!b@example.test",
+    "valid": false
+  },
+  {
+    "value": "a@-example.test",
+    "valid": false
+  },
+  {
+    "value": "a@example-.test",
+    "valid": true
+  },
+  {
+    "value": "café@example.test",
+    "valid": false
+  },
+  {
+    "value": "a@localhost",
+    "valid": false
+  },
+  {
+    "value": "a_b@example.test",
+    "valid": true
+  }
+]

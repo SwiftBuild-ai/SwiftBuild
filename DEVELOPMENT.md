@@ -2,6 +2,8 @@
 
 Use runtime major version 24 (`node`) and package manager version 10.28.1 (`pnpm`); follow the root manifest and tracked lockfile rather than an assumed latest release. Commands work in PowerShell and POSIX shells.
 
+Server HTTP, identity, storage, workers and operators now run Python 3.12 in [services/backend](services/backend/README.md). Install its pinned development lock, apply migrations explicitly, and run `pnpm backend:dev` separately from `pnpm dev`. The web process needs only `SWIFTBUILD_BACKEND_URL`; private database/identity settings belong in Python processes. Run `pnpm backend:check`, `pnpm backend:lint` and `pnpm backend:test` alongside `pnpm verify`. Native Python entry points work without Node. The TypeScript server package remains temporarily as a compatibility reference. Docker deployment changes and cutover certification are deferred; existing full-server recipes are not qualified for this topology.
+
 Optional engineering computations use Python 3.12 with pinned runtime/developer locks. See [worker setup](docs/self-hosting/computation.md). Run `pnpm computation:check`, the service's `generate_models.py --check`, and its pytest suite alongside the TypeScript checks. Set `SWIFTBUILD_COMPUTATION_PYTHON` to the virtual-environment Python executable for real dispatcher and server browser tests. Test databases remain isolated `_test` databases. Run `sh tooling/scripts/server-smoke.sh` for the full Compose deployment and backup/restore check in a disposable test deployment.
 
 ```sh

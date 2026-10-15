@@ -1,7 +1,5 @@
 import { randomUUID } from 'node:crypto';
 import { spawn } from 'node:child_process';
-import { createRequire } from 'node:module';
-import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import {
@@ -52,6 +50,46 @@ export default async function setup() {
     );
   try {
     await migrate(scoped.pool);
+    const backendPython =
+      process.env.SWIFTBUILD_BACKEND_PYTHON ??
+      resolve(
+        'services/backend/.venv',
+        process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python',
+      );
+    children.push(
+      spawn(backendPython, ['-m', 'swiftbuild_backend'], {
+        cwd: resolve('services/backend'),
+        env: {
+          ...process.env,
+          ...settings,
+          DATABASE_URL: process.env.SWIFTBUILD_BROWSER_DATABASE_URL,
+          SWIFTBUILD_BACKEND_PORT: '18321',
+          SWIFTBUILD_OIDC_DISCOVERY_URL: '',
+          SWIFTBUILD_OIDC_CLIENT_ID: '',
+          SWIFTBUILD_OIDC_CLIENT_SECRET: '',
+        },
+        stdio: 'ignore',
+      }),
+    );
+    let apiReady = false;
+    for (let i = 0; i < 100; i++) {
+      try {
+        if (
+          (
+            await fetch('http://127.0.0.1:18321/api/v1/ready', {
+              signal: AbortSignal.timeout(2000),
+            })
+          ).ok
+        ) {
+          apiReady = true;
+          break;
+        }
+      } catch {
+        /* wait for Python startup */
+      }
+      await delay(100);
+    }
+    if (!apiReady) throw new Error('Browser FastAPI service did not start.');
     const email = 'browser-' + randomUUID() + '@example.test';
     const invitation = await issueInvitation(scoped.pool, email, {
       bootstrap: true,
@@ -98,27 +136,17 @@ export default async function setup() {
       }
       if (!ready) throw new Error('Browser computation service did not start.');
       children.push(
-        spawn(
-          process.execPath,
-          [
-            '--import',
-            pathToFileURL(
-              createRequire(
-                resolve('packages/server-core/package.json'),
-              ).resolve('tsx'),
-            ).href,
-            resolve('packages/server-core/src/dispatcher.ts'),
-          ],
-          {
-            env: {
-              ...process.env,
-              DATABASE_URL: process.env.SWIFTBUILD_BROWSER_DATABASE_URL,
-              SWIFTBUILD_COMPUTATION_TOKEN: token,
-              SWIFTBUILD_COMPUTATION_URL: 'http://127.0.0.1:18320',
-            },
-            stdio: 'ignore',
+        spawn(backendPython, ['-m', 'swiftbuild_backend.worker'], {
+          cwd: resolve('services/backend'),
+          env: {
+            ...process.env,
+            ...settings,
+            DATABASE_URL: process.env.SWIFTBUILD_BROWSER_DATABASE_URL,
+            SWIFTBUILD_COMPUTATION_TOKEN: token,
+            SWIFTBUILD_COMPUTATION_URL: 'http://127.0.0.1:18320',
           },
-        ),
+          stdio: 'ignore',
+        }),
       );
       process.env.SWIFTBUILD_BROWSER_COMPUTATION = '1';
     }

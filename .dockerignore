@@ -33,6 +33,8 @@ logs
 **/.venv
 **/__pycache__
 **/.pytest_cache
+**/.ruff_cache
+**/*.egg-info
 AGENT.local.md
 IDENTITY.local.md
 USER.local.md

@@ -39,6 +39,20 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12.10'
+      - name: Prepare native backend and recovery tools
+        run: |
+          python -m venv services/backend/.venv
+          services/backend/.venv/bin/python -m pip install -r services/backend/requirements-dev.lock
+          sudo apt-get update
+          sudo apt-get install -y postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y postgresql-client-18
+          echo "/usr/lib/postgresql/18/bin" >> "$GITHUB_PATH"
+      - name: Verify Python backend parity and contracts
+        run: |
+          pnpm backend:check
+          pnpm backend:lint
+          pnpm backend:test
       - name: Prepare and verify computation contracts
         run: |
           sh tooling/scripts/computation-dev.sh setup

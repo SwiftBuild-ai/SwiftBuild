@@ -12,8 +12,8 @@ graph TD
   web --> ui
   web --> tokens[design-tokens]
   web --> primitives[components-core]
-  web --> server[server-core]
-  server --> archives[project-format]
+  web -. HTTP .-> server[Python FastAPI backend]
+  server -. generated contracts .-> schema[architecture-schema]
   canvas --> archives
   archives --> schema[architecture-schema]
   archives --> model[architecture-model]
@@ -55,7 +55,9 @@ graph TD
 | `ui`, `design-tokens`                   | Shared accessible controls, local icons and semantic presentation tokens                                     |
 | `apps/web`                              | Server-rendered shell, application routes and bundled assets                                                 |
 | `project-format`                        | Host-independent validated archives, byte limits and asynchronous storage contract                           |
-| `server-core`                           | Server identity, transactional persistence, migrations, operator commands and HTTP boundaries                |
+| `services/backend`                      | Server identity, transactional persistence, migrations, jobs, calculations, operators and HTTP boundaries    |
+
+`server-core` remains temporarily as legacy compatibility/reference code. Next.js depends on a typed HTTP adapter rather than the relational or identity implementation. Python semantic validation and capacity calculations are checked against TypeScript fixtures. See [ADR 0012](../adr/0012-python-backend.md).
 
 Core packages do not depend on hosting, accounts or a server database. UI owns local SVG presentation without registry or architecture dependencies. Registry identity extends embedded definitions without replacing semantic types. Package boundaries are enforced by `pnpm boundaries`.
 

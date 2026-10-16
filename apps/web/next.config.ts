@@ -5,7 +5,6 @@ const config: NextConfig = {
   transpilePackages: [
     '@swiftbuild/canvas',
     '@swiftbuild/project-format',
-    '@swiftbuild/server-core',
     '@swiftbuild/ui',
     '@swiftbuild/design-tokens',
     '@swiftbuild/architecture-schema',

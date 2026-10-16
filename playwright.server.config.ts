@@ -14,9 +14,12 @@ scoped.searchParams.set(
   'options',
   '-c search_path=' + process.env.SWIFTBUILD_BROWSER_SCHEMA,
 );
-process.env.SWIFTBUILD_BROWSER_DATABASE_URL = scoped.toString();
+// libpq decodes percent escapes, not form-encoded '+' spaces.
+const scopedConnection = scoped.toString().replaceAll('+', '%20');
+process.env.SWIFTBUILD_BROWSER_DATABASE_URL = scopedConnection;
 export default defineConfig({
   testDir: './tests',
+  outputDir: 'test-results/server',
   testMatch: 'server-projects.spec.ts',
   globalSetup: './tests/server-setup.ts',
   workers: 1,
@@ -35,10 +38,11 @@ export default defineConfig({
     reuseExistingServer: false,
     timeout: 60000,
     env: {
-      DATABASE_URL: scoped.toString(),
-      SWIFTBUILD_URL: 'http://localhost:3200',
-      SWIFTBUILD_AUTH_SECRET: process.env.SWIFTBUILD_BROWSER_SECRET,
-      SWIFTBUILD_ALLOW_LOCAL_HTTP: '1',
+      SWIFTBUILD_BACKEND_URL: 'http://127.0.0.1:18321',
+      DATABASE_URL: '',
+      SWIFTBUILD_URL: '',
+      SWIFTBUILD_AUTH_SECRET: '',
+      SWIFTBUILD_ALLOW_LOCAL_HTTP: '0',
       SWIFTBUILD_OIDC_DISCOVERY_URL: '',
       SWIFTBUILD_OIDC_CLIENT_ID: '',
       SWIFTBUILD_OIDC_CLIENT_SECRET: '',

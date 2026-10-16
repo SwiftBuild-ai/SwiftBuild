@@ -10,7 +10,7 @@
     "dev": "pnpm dev:web",
     "computation:generate": "pnpm --filter @swiftbuild/computation-contracts generate",
     "computation:check": "pnpm --filter @swiftbuild/computation-contracts generate --check",
-    "computation:worker": "pnpm --filter @swiftbuild/server-core worker",
+    "computation:worker": "node tooling/scripts/backend.mjs worker",
     "dev:web": "pnpm --filter @swiftbuild/web dev",
     "build": "turbo run build",
     "lint": "eslint . && pnpm boundaries",
@@ -29,7 +29,13 @@
     "verify": "pnpm format:check && pnpm docs:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
     "clean": "node tooling/scripts/clean.mjs",
     "changeset": "changeset",
-    "server:operator": "pnpm --filter @swiftbuild/server-core cli"
+    "server:operator": "node tooling/scripts/backend.mjs operator",
+    "backend:dev": "node tooling/scripts/backend.mjs serve",
+    "backend:worker": "node tooling/scripts/backend.mjs worker",
+    "backend:test": "node tooling/scripts/backend.mjs test",
+    "backend:lint": "node tooling/scripts/backend.mjs lint && node tooling/scripts/backend.mjs format-check",
+    "backend:generate": "tsx tooling/scripts/backend-contracts.mts && node tooling/scripts/backend.mjs models && node tooling/scripts/backend.mjs openapi && node tooling/scripts/backend-types.mjs",
+    "backend:check": "tsx tooling/scripts/backend-contracts.mts --check && node tooling/scripts/backend.mjs models --check && node tooling/scripts/backend.mjs openapi --check && node tooling/scripts/backend-types.mjs --check"
   },
   "devDependencies": {
     "@changesets/cli": "^2.29.7",
@@ -40,7 +46,9 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "fake-indexeddb": "^6.2.5",
     "globals": "^16.5.0",
+    "openapi-typescript": "7.10.1",
     "prettier": "^3.6.2",
+    "tsx": "4.20.6",
     "turbo": "^2.6.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.46.0",

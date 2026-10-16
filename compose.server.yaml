@@ -25,20 +25,16 @@ services:
       SWIFTBUILD_COMPUTATION_TOKEN: '${SWIFTBUILD_COMPUTATION_TOKEN}'
       SWIFTBUILD_DB_RUNTIME_PASSWORD: '${SWIFTBUILD_DB_RUNTIME_PASSWORD:?Set the private runtime password}'
       SWIFTBUILD_RELEASE_IMAGE: '${SWIFTBUILD_RELEASE_IMAGE:-unrecorded}'
-    command: ['sh', 'tooling/scripts/provision-server.sh']
+    command: ['sh', '/app/tooling/scripts/provision-server.sh']
     depends_on:
       database:
         condition: service_healthy
   web:
     environment:
-      DATABASE_URL: 'postgresql://swiftbuild_runtime:${SWIFTBUILD_DB_RUNTIME_PASSWORD}@database:5432/${SWIFTBUILD_DB_NAME:-swiftbuild}'
-      SWIFTBUILD_URL: '${SWIFTBUILD_URL:-http://localhost:3000}'
-      SWIFTBUILD_ALLOW_LOCAL_HTTP: '${SWIFTBUILD_ALLOW_LOCAL_HTTP:-1}'
-      SWIFTBUILD_AUTH_SECRET: '${SWIFTBUILD_AUTH_SECRET:?Set a stable private identity secret}'
-      SWIFTBUILD_COMPUTATION_ENABLED: '1'
+      SWIFTBUILD_BACKEND_URL: 'http://backend:8001'
     depends_on:
-      migrate:
-        condition: service_completed_successfully
+      backend:
+        condition: service_healthy
     healthcheck:
       test:
         [
@@ -47,6 +43,23 @@ services:
           '-e',
           "fetch('http://127.0.0.1:3000/api/v1/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
         ]
+  backend:
+    build:
+      context: .
+      target: backend
+    environment:
+      DATABASE_URL: 'postgresql://swiftbuild_runtime:${SWIFTBUILD_DB_RUNTIME_PASSWORD}@database:5432/${SWIFTBUILD_DB_NAME:-swiftbuild}'
+      SWIFTBUILD_URL: '${SWIFTBUILD_URL:-http://localhost:3000}'
+      SWIFTBUILD_ALLOW_LOCAL_HTTP: '${SWIFTBUILD_ALLOW_LOCAL_HTTP:-1}'
+      SWIFTBUILD_AUTH_SECRET: '${SWIFTBUILD_AUTH_SECRET:?Set a stable private identity secret}'
+      SWIFTBUILD_COMPUTATION_ENABLED: '1'
+      SWIFTBUILD_OIDC_DISCOVERY_URL: '${SWIFTBUILD_OIDC_DISCOVERY_URL:-}'
+      SWIFTBUILD_OIDC_CLIENT_ID: '${SWIFTBUILD_OIDC_CLIENT_ID:-}'
+      SWIFTBUILD_OIDC_CLIENT_SECRET: '${SWIFTBUILD_OIDC_CLIENT_SECRET:-}'
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
   computation:
     build: services/computation
     environment:
@@ -61,28 +74,27 @@ services:
     security_opt: ['no-new-privileges:true']
     restart: unless-stopped
   dispatcher:
-    working_dir: /app/packages/server-core
     build:
       context: .
-      target: operations
+      target: backend
     environment:
       DATABASE_URL: 'postgresql://swiftbuild_runtime:${SWIFTBUILD_DB_RUNTIME_PASSWORD}@database:5432/${SWIFTBUILD_DB_NAME:-swiftbuild}'
       SWIFTBUILD_COMPUTATION_URL: 'http://computation:8000'
       SWIFTBUILD_COMPUTATION_TOKEN: '${SWIFTBUILD_COMPUTATION_TOKEN}'
-      NODE_OPTIONS: '--v8-pool-size=2 --max-old-space-size=384'
-      UV_THREADPOOL_SIZE: '2'
-      GOMAXPROCS: '2'
+      SWIFTBUILD_URL: '${SWIFTBUILD_URL:-http://localhost:3000}'
+      SWIFTBUILD_ALLOW_LOCAL_HTTP: '${SWIFTBUILD_ALLOW_LOCAL_HTTP:-1}'
+      SWIFTBUILD_AUTH_SECRET: '${SWIFTBUILD_AUTH_SECRET}'
     cpus: 1
     mem_limit: 512m
     pids_limit: 64
-    command: ['node', '--import', 'tsx', 'src/dispatcher.ts']
+    command: ['python', '-m', 'swiftbuild_backend.worker']
     depends_on:
       migrate:
         condition: service_completed_successfully
       computation:
         condition: service_healthy
     healthcheck:
-      test: ['CMD', 'node', '--import', 'tsx', 'src/worker-health.ts']
+      test: ['CMD', 'python', '-m', 'swiftbuild_backend.worker_health']
       interval: 15s
       timeout: 10s
       start_period: 20s

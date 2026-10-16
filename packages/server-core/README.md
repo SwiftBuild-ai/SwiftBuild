@@ -1,6 +1,6 @@
 # SwiftBuild server core
 
-Legacy compatibility/reference package retained temporarily. Current HTTP, identity, storage, workers and operator ownership moved to [the Python backend](../../services/backend/README.md); the web application has no runtime dependency on this package. The material below describes the legacy implementation used by comparison fixtures and the unchanged Docker tooling. Those deployment recipes are not certified for the new topology. See [ADR 0012](../../docs/adr/0012-python-backend.md).
+Legacy compatibility/reference package retained temporarily. Current HTTP, identity, storage, workers and operator ownership moved to [the Python backend](../../services/backend/README.md); the web application has no runtime dependency on this package. The material below describes the legacy implementation used by comparison fixtures. Current container operations and deployment/recovery smoke use Python as well. See [ADR 0012](../../docs/adr/0012-python-backend.md).
 
 Server-only transactional storage foundation. `migrate(pool)` applies ordered, checksum-verified, maintainer-owned SQL migrations under an advisory lock. An applied migration cannot be edited or removed; introduce a new migration instead. Failed migrations roll back. Apply migrations explicitly before serving requests, with a migration-role connection; the runtime role should not own schema changes.
 

@@ -47,7 +47,7 @@ Missing measurements remain unknown; simulation results describe the supplied mo
 
 ## Development and contribution
 
-Server APIs, identity, persistence, jobs and operators run in the [Python FastAPI backend](services/backend/README.md). Next.js renders the application and forwards same-origin HTTP. Browser-local mode needs no backend. The legacy TypeScript server package remains temporarily for compatibility references; Docker deployment changes are deferred.
+Server APIs, identity, persistence, jobs and operators run in the [Python FastAPI backend](services/backend/README.md). Next.js renders the application and forwards same-origin HTTP. Browser-local mode needs no backend. The legacy TypeScript server package remains temporarily for compatibility references. The [full-server configuration](docs/self-hosting/computation.md) runs separate Python services; production cutover certification remains deferred.
 
 The [current status](docs/status.md) records implemented capabilities, limitations and dated verification. Read [DEVELOPMENT.md](DEVELOPMENT.md), [CONTRIBUTING.md](CONTRIBUTING.md), and [AGENT.md](AGENT.md). Browse the [documentation hub](docs/README.md) for architecture, engineering, recovery and planned work. Run `pnpm verify` before proposing changes and `pnpm test:e2e` for editor changes.
 

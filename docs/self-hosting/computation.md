@@ -1,6 +1,6 @@
 # Server deployment and engineering workers
 
-The current web host uses the [Python backend](../../services/backend/README.md). Docker/deployment updates are deferred; container commands in this guide describe the retained legacy setup and are not qualified for the new topology. For native development, run the backend API and Python worker with database/identity settings, and run the private numerical supervisor without those credentials. `pnpm computation:worker` now starts the Python dispatcher. The TypeScript domain engines remain available for browser-local editing and simulations.
+The current web host uses the [Python backend](../../services/backend/README.md). The full-server configuration runs separate web, backend API, dispatcher, numerical supervisor and operator services. Only the web port is published. Database and identity settings belong to Python backend/operator processes; the private numerical supervisor has neither. `pnpm computation:worker` starts the Python dispatcher for native development. The TypeScript domain engines remain available for browser-local editing and simulations.
 
 Default `docker compose up --build` still runs browser-local mode. For server projects and engineering computations, copy `server.env.example` to ignored `server.env`, generate separate private hexadecimal passwords/tokens, and keep the identity secret stable. Hexadecimal passwords avoid connection-URL escaping ambiguity. Never use the example values for a deployment.
 
@@ -8,7 +8,7 @@ Default `docker compose up --build` still runs browser-local mode. For server pr
 docker compose --env-file server.env -f compose.yaml -f compose.server.yaml up --build --wait --wait-timeout 240
 ```
 
-The one-shot migration service applies checksum-verified migrations with the administrator connection and provisions a separate runtime role. The web host and dispatcher use this runtime role, which does not own tables or schema changes. PostgreSQL data lives in a named volume. The Python service has no published port, database connection or identity-provider configuration.
+The one-shot Python migration service applies checksum-verified migrations with the administrator connection and provisions a separate runtime role. The backend API and dispatcher use this runtime role, which does not own tables or schema changes. The web host receives only the private backend origin. PostgreSQL data lives in a named volume. The numerical supervisor has no published port, database connection or identity-provider configuration. API, dispatcher and operator images require no Node runtime; the operator image includes PostgreSQL 18 client tools.
 
 ## Stop, restart and readiness
 
@@ -21,14 +21,14 @@ The disposable `tooling/scripts/server-smoke.sh` workflow uses an isolated `_tes
 Bootstrap through the operator service, forwarding identity configuration from the private environment file:
 
 ```sh
-docker compose --env-file server.env -f compose.yaml -f compose.server.yaml run --rm migrate pnpm server:operator bootstrap --email owner@example.test
+docker compose --env-file server.env -f compose.yaml -f compose.server.yaml run --rm migrate python -m swiftbuild_backend.cli bootstrap --email owner@example.test
 ```
 
 The printed one-time link is private. No mail server is required. Configure HTTPS and set `SWIFTBUILD_ALLOW_LOCAL_HTTP=0` outside loopback development. Organizational sign-in remains optional using the existing configuration.
 
 ## Local development
 
-Use Node 24 and the repository's pinned pnpm. Python requires 3.12. Install the pinned developer environment using `tooling/scripts/computation-dev.ps1 -Setup` on PowerShell or `sh tooling/scripts/computation-dev.sh setup` on POSIX. Set a private `SWIFTBUILD_COMPUTATION_TOKEN` of at least 32 characters in the computation and dispatcher shells. Set `DATABASE_URL` only in TypeScript shells and `SWIFTBUILD_COMPUTATION_URL=http://127.0.0.1:8000` for the dispatcher.
+Use Node 24 and the repository's pinned pnpm for the web shell. Python requires 3.12. Install the [backend environment](../../services/backend/README.md) and the numerical environment using `tooling/scripts/computation-dev.ps1 -Setup` on PowerShell or `sh tooling/scripts/computation-dev.sh setup` on POSIX. Set a private `SWIFTBUILD_COMPUTATION_TOKEN` of at least 32 characters in the computation and dispatcher shells. Set `DATABASE_URL` only in backend/operator shells and `SWIFTBUILD_COMPUTATION_URL=http://127.0.0.1:8000` for the dispatcher.
 
 Run the computation development script, `pnpm computation:worker`, and `pnpm dev` in separate terminals after applying server migrations. Native Windows development enforces subprocess deadlines and cancellation but Linux/container resource limits are required to verify CPU/address-space ceilings.
 
@@ -44,7 +44,7 @@ Use the service's virtual-environment Python for generation and tests. `SWIFTBUI
 
 ## Health, budgets and failures
 
-Web `/api/health` is process liveness. `/api/v1/ready` validates migrations and, when `SWIFTBUILD_COMPUTATION_ENABLED=1`, dispatcher heartbeat freshness. The dispatcher checks the private Python `/v1/ready` contract version and schema digest before claiming work. Python `/health` remains responsive during computation. Operator heartbeat checks use `pnpm --filter @swiftbuild/server-core exec tsx src/worker-health.ts`.
+Web `/api/health` is process liveness. `/api/v1/ready` validates migrations and, when `SWIFTBUILD_COMPUTATION_ENABLED=1`, dispatcher heartbeat freshness. The dispatcher checks the private Python `/v1/ready` contract version and schema digest before claiming work. Numerical `/health` remains responsive during computation. Operator heartbeat checks use `python -m swiftbuild_backend.worker_health`.
 
 Python runs one execution at a time with a one-CPU, 512 MiB container ceiling, 64-process ceiling, read-only root filesystem, and bounded temporary storage. Child processes additionally enforce Linux CPU, address-space and output-file limits. BLAS uses one thread. Keep a single dispatcher/computation pair for this first release; multiple dispatchers preserve lease fencing, but a shared busy computation service can cause an attempt to fail.
 

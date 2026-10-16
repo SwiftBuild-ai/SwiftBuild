@@ -14,7 +14,7 @@ def main():
 
     config = uvicorn.Config(
         create_app(Settings.from_env()),
-        host='127.0.0.1',
+        host=os.getenv('SWIFTBUILD_BACKEND_HOST', '127.0.0.1'),
         port=int(os.getenv('SWIFTBUILD_BACKEND_PORT', '8001')),
         access_log=False,
         proxy_headers=False,

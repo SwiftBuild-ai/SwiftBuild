@@ -21,8 +21,8 @@ trap cleanup EXIT
 compose up --build --wait --wait-timeout 240
 export SWIFTBUILD_SMOKE_RESTART_ID="$(openssl rand -hex 16)"
 export SWIFTBUILD_SMOKE_RESTART_PASSWORD="$(openssl rand -hex 32)"
-compose run --rm -e SWIFTBUILD_SMOKE_RESTART_ID -e SWIFTBUILD_SMOKE_RESTART_PASSWORD migrate pnpm --filter @swiftbuild/server-core exec tsx src/deployment-smoke.ts
+compose run --rm -e SWIFTBUILD_SMOKE_RESTART_ID -e SWIFTBUILD_SMOKE_RESTART_PASSWORD migrate python -m swiftbuild_backend.deployment_smoke
 # Recreate the services against the same named volume and private configuration.
 compose down
 compose up --wait --wait-timeout 240
-compose run --rm -e SWIFTBUILD_SMOKE_RESTART_ID -e SWIFTBUILD_SMOKE_RESTART_PASSWORD migrate pnpm --filter @swiftbuild/server-core exec tsx src/deployment-restart-smoke.ts
+compose run --rm -e SWIFTBUILD_SMOKE_RESTART_ID -e SWIFTBUILD_SMOKE_RESTART_PASSWORD migrate python -m swiftbuild_backend.deployment_smoke --restart

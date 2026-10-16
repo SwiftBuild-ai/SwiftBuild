@@ -1,6 +1,6 @@
 # Operator backup and recovery drills
 
-These commands now run through the [native Python operator](../../services/backend/README.md). Install matching local PostgreSQL client tools and use the native commands or pnpm wrappers. The Docker invocation below is a retained legacy recipe awaiting the deferred deployment update; it is not qualified for the FastAPI conversion.
+These commands run through the [native Python operator](../../services/backend/README.md). Install matching local PostgreSQL client tools and use the native commands or pnpm wrappers. The full-server operations image includes Python and matching PostgreSQL tools; it does not require Node.
 
 SwiftBuild provides private operator commands for binary-safe database backups, offline integrity verification and isolated restoration drills. This tooling has local boundary-test/build coverage; the required hosted CI deployment smoke supplies database/container acceptance while local Docker remains stopped. See the [verification record](../status.md). They do not switch a live deployment, delete databases, back up browser drafts, or establish production disaster recovery certification.
 
@@ -18,10 +18,10 @@ pnpm server:operator verify-backup --directory /private/backups/swiftbuild-2026-
 The same commands work in PowerShell with a Windows directory and installed PostgreSQL tools. No binary output redirection is used. When running inside Compose, mount the backup parent into the operations service so the files survive its removal:
 
 ```sh
-docker compose --env-file server.env -f compose.yaml -f compose.server.yaml run --rm --volume /private/backups:/backups migrate pnpm server:operator backup --directory /backups/swiftbuild-2026-10-13
+docker compose --env-file server.env -f compose.yaml -f compose.server.yaml run --rm --volume /private/backups:/backups migrate python -m swiftbuild_backend.cli backup --directory /backups/swiftbuild-2026-10-13
 ```
 
-Ensure the container's non-root `node` user can write the mounted parent. On POSIX, the new backup directory is mode `0700` and artifacts are mode `0600`; configure equivalent Windows ACLs independently.
+Ensure the container's non-root `backend` user (UID 10001) can write the mounted parent. On POSIX, the new backup directory is mode `0700` and artifacts are mode `0600`; configure equivalent Windows ACLs independently.
 
 Each completed directory contains `database.dump` and a bounded `manifest.json` in `swiftbuild-database-backup` version `1.0`. The manifest records snapshot/completion times, dump size and SHA-256, PostgreSQL/tool versions, the operator-supplied release label, exact migration checksums and row inventory. A shared exported PostgreSQL snapshot ties the dump and row inventory together while ordinary writes continue. Backups include the dedicated database's public schema. PostgreSQL roles, private configuration, image artifacts and browser storage require separate preservation.
 

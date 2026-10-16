@@ -54,3 +54,37 @@ async def test_native_operator_without_node_runtime(pool, tmp_path):
     recovery = urlsplit(output.splitlines()[0]).path.split('/')[-1]
     await identity.reset_password(recovery, 'replacement synthetic password')
     assert await identity.sign_in('owner@example.test', 'replacement synthetic password')
+
+
+async def test_native_worker_health_requires_a_fresh_heartbeat(pool, tmp_path):
+    async with pool.connection() as c:
+        schema = (await one(c, 'SHOW search_path'))['search_path']
+    env = {
+        **os.environ,
+        'DATABASE_URL': make_conninfo(
+            os.environ['SWIFTBUILD_TEST_DATABASE_URL'], options='-c search_path=' + schema
+        ),
+        'PATH': str(tmp_path),
+    }
+
+    async def health():
+        result = await asyncio.to_thread(
+            subprocess.run,
+            [sys.executable, '-m', 'swiftbuild_backend.worker_health'],
+            cwd=Path(__file__).resolve().parents[1],
+            env=env,
+            capture_output=True,
+            timeout=15,
+        )
+        assert result.stdout == b'' and result.stderr == b''
+        return result.returncode
+
+    assert await health() == 1
+    async with pool.connection() as c:
+        await c.execute(
+            "INSERT INTO sb_worker_heartbeats(id,updated_at) VALUES ('00000000-0000-4000-8000-000000000001',now())"
+        )
+    assert await health() == 0
+    async with pool.connection() as c:
+        await c.execute("UPDATE sb_worker_heartbeats SET updated_at=now()-interval '31 seconds'")
+    assert await health() == 1

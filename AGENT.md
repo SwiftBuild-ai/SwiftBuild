@@ -26,7 +26,7 @@ IDs are stable. Layout belongs only in views. Native format is 1.1 with explicit
 
 ## Frontend and backend conventions
 
-Server ownership is Python in `services/backend`: HTTP, identity, SQL repositories, migrations, jobs, capacity calculations and operators. Next.js owns rendering and transparent HTTP adapters; its process needs only the private backend origin. `packages/server-core` remains temporarily for legacy compatibility fixtures and deferred Docker tooling, with no web runtime dependency. This supersedes the server-core ownership wording below; see [ADR 0012](docs/adr/0012-python-backend.md). Verify Python parity and generated contracts alongside the existing suites. Docker/deployment changes are deferred.
+Server ownership is Python in `services/backend`: HTTP, identity, SQL repositories, migrations, jobs, capacity calculations and operators. Next.js owns rendering and transparent HTTP adapters; its process needs only the private backend origin. `packages/server-core` remains temporarily for legacy compatibility fixtures, with no web runtime dependency. This supersedes the server-core ownership wording below; see [ADR 0012](docs/adr/0012-python-backend.md). Verify Python parity and generated contracts alongside the existing suites. Full-server Compose uses Python API/dispatcher/operator services and native recovery/restart smoke; production routing and rolling-cutover certification remain deferred.
 
 Keep the shell server-rendered and interactive canvas client-side. Use semantic tokens, accessible primitives, labeled actions, visible focus, reduced motion, and the parallel object list. Separate transient editor state from persisted documents. Use selective editor-store subscriptions. Commit a drag once.
 

@@ -23,3 +23,7 @@ Docker files and deployment infrastructure remain unchanged. Existing full-serve
 UI implementation is deferred. The scoped audit found small labels on a fitted canvas and an Engineering analysis prerequisite screen without an actionable next step. Captures remain in ignored `.agent-work/fastapi-audit`; these observations do not establish broader accessibility findings.
 
 See [backend setup and verification](../../services/backend/README.md).
+
+### Required deployment gate follow-up, October 16, 2026
+
+The required merge smoke exposed that the retained container image lacked Python and its web/dispatcher wiring still targeted TypeScript authority. The follow-up moves container migration/operators, dispatcher, health probes and recovery/restart smoke to Python, and connects the web shell to a separate private FastAPI service. Browser-local Compose remains independent. This supersedes the Docker deferral above for compatibility with the existing merge gate; production routing and rolling-cutover certification remain deferred.

@@ -1,10 +1,27 @@
 # Contributing
 
-Install the prerequisites in [DEVELOPMENT.md](DEVELOPMENT.md), fork and clone the SwiftBuild repository, then run `pnpm install` and `pnpm dev`.
+First contributions are welcome. Small documentation fixes and focused Python improvements are useful contributions; you do not need to understand the whole architecture to get started. Questions and draft PRs are welcome, including when setup or a check is giving you trouble.
 
-Use a focused `feat/`, `fix/`, `docs/`, `refactor/`, or `chore/` branch. Use Conventional Commits and keep changes coherent. Submit the PR template with motivation, verification, and screenshots for UI changes. Normal PRs use a regular merge commit, preserving the individual commits. Squash or rebase only when explicitly requested.
+## Start small
 
-Choose a bounded task from the issue tracker using [issue guidance](docs/contributor-issues.md). `good first issue` identifies work with clear entry points and limited prerequisites; `difficulty: medium` identifies work needing broader implementation or failure-path reasoning. Check existing issues and PRs before starting, and describe your intended approach on the issue. Split larger work into independently reviewable slices. Commit each quality improvement or feature slice separately, and merge only after both `verify` and `docker-smoke` pass for the current head. Retarget open dependent PRs before deleting their parent branch.
+1. Choose a `good first issue` or a small improvement you can explain. Check existing issues and PRs to avoid duplicate work. You can start a small fix without permission or a separate proposal; discuss larger changes before investing substantial work.
+2. Fork and clone the repository, then create a focused `feat/`, `fix/`, `docs/`, `refactor/`, or `chore/` branch. Read the issue's linked files and the relevant package guidance. You only need architecture decisions that affect your change.
+3. Make the change and run the focused checks below. Keep the PR about one task; a single coherent commit is fine. Use a Conventional Commit subject such as `docs: clarify Python setup`.
+4. Open a PR with what changed, why, and the checks you ran. Mention `Fixes #NUMBER` when it completes an issue. Leave irrelevant template sections out and describe any checks you could not run. Maintainers can help with the remaining verification.
+
+Documentation edits do not require running the application. Python-only work can use the setup in [the backend guide](services/backend/README.md) without installing Node or starting the web app. For web development, install the prerequisites in [DEVELOPMENT.md](DEVELOPMENT.md), then run `pnpm install` and `pnpm dev`.
+
+## Checks for your change
+
+| Change                   | Checks before requesting review                                                                                                                                                                                                                  |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Documentation only       | Review links, commands and claims against the referenced source. If Node is available, run `pnpm docs:check` and `pnpm exec prettier --check PATH_TO_CHANGED_FILE`. Otherwise mention that in your PR.                                           |
+| Python backend           | Run the relevant tests from `services/backend` with `python -m pytest tests/RELEVANT_TEST_FILE.py -q`, plus `python -m ruff check PATH` and `python -m ruff format --check PATH` for changed Python files. Use the virtual environment's Python. |
+| Web or shared TypeScript | Run the affected package's checks; see [development commands](DEVELOPMENT.md). Editor interactions also need the relevant browser tests and keyboard checks.                                                                                     |
+
+You do not need Docker, PostgreSQL, or the full repository suite to submit a docs fix or a Python task that does not use the database. Database tests require an isolated `_test` database; a skipped test is not a pass. Report failed or unavailable checks honestly and ask for help rather than weakening assertions. Add meaningful tests when behavior changes; prose-only changes do not need new tests, screenshots, an ADR, or a changeset.
+
+The full checks still protect merging: maintainers ensure both hosted `verify` and `docker-smoke` pass for the current head. Contributors do not need to reproduce every CI job locally before opening a PR. Maintainers use a regular merge commit to preserve individual commits; squash or rebase only when explicitly requested, and retarget dependent PRs before deleting a parent branch.
 
 ## Contribution paths
 
@@ -16,6 +33,6 @@ Choose a bounded task from the issue tracker using [issue guidance](docs/contrib
 - Engineering workflows: keep requirements, decisions and scenario contracts in schema/model; worker orchestration and browser adapters belong in canvas.
 - Core: preserve dependency direction and public schema compatibility. Read the relevant ADRs.
 
-For documentation-only changes, check links, commands, formats and the prose policy; no changeset is needed unless public package behavior changes. Record verification failures and unavailable checks explicitly. Run `pnpm verify`. Editor changes also require `pnpm test:e2e` and keyboard testing. Add a changeset for a public package behavior change. Do not weaken assertions to pass tests. Schema changes require a new version, explicit migration, old-file fixtures, and documentation.
+For public package behavior changes, add a changeset. Schema changes require a new version, explicit migration, old-file fixtures, and documentation. Significant architecture changes need an ADR. These requirements apply when your change affects those areas, not to every contribution. See [issue guidance](docs/contributor-issues.md) for scoping larger tasks.
 
 Follow [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). Never report vulnerabilities in public issues; consult [SECURITY.md](SECURITY.md).

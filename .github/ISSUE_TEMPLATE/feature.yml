@@ -14,7 +14,7 @@ body:
   - type: textarea
     id: evidence
     attributes:
-      label: Evidence and verification
-      description: Include reproduction steps, examples, expected behavior, or acceptance criteria. Remove private data.
+      label: Examples or extra context (optional)
+      description: Share an example or the result you would like to see. A technical design or test plan is not required. Omit private data.
     validations:
-      required: true
+      required: false

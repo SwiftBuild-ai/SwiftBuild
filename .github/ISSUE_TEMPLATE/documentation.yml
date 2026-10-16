@@ -3,7 +3,7 @@ description: Describe missing, unclear or outdated SwiftBuild guidance.
 body:
   - type: markdown
     attributes:
-      value: 'Do not report vulnerabilities here. Read SECURITY.md for private reporting prerequisites.'
+      value: 'Small fixes and questions are welcome. Fill in what you know; maintainers can help investigate. For private security reporting, read SECURITY.md.'
   - type: textarea
     id: problem
     attributes:
@@ -14,7 +14,7 @@ body:
   - type: textarea
     id: evidence
     attributes:
-      label: Evidence and verification
-      description: Include document paths, the current implementation evidence, and the expected correction. Distinguish implemented and planned behavior. Remove private data and external brand references.
+      label: Useful details (optional)
+      description: A page link, unclear sentence, or suggested wording is helpful. You do not need to investigate the implementation or run tests to report a documentation problem. Omit private data.
     validations:
-      required: true
+      required: false

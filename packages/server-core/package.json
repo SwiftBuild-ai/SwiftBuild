@@ -26,6 +26,6 @@
   "devDependencies": {
     "@swiftbuild/components-core": "workspace:*",
     "@types/pg": "^8.15.6",
-    "jose": "6.2.3"
+    "jose": "6.2.12"
   }
 }

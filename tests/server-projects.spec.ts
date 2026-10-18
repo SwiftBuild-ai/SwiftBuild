@@ -627,18 +627,21 @@ test('engineering jobs survive reload and export/import through the workbench', 
   const bundle = await downloaded;
   const body = JSON.parse(await readFile((await bundle.path())!, 'utf8'));
   expect(body.report.availability).toBeCloseTo(0.8, 12);
-  await page.getByLabel('Import historical analysis bundle').setInputFiles({
+  const importBundle = page.getByLabel('Import historical analysis bundle');
+  await expect(importBundle).toBeEnabled();
+  await importBundle.setInputFiles({
     name: 'analysis.json',
     mimeType: 'application/json',
     buffer: Buffer.from(JSON.stringify(body)),
   });
   await expect(page.getByText('completed · Historical import')).toBeVisible();
-  await page
-    .getByRole('button', { name: 'Submit saved revision 1', exact: true })
-    .focus();
-  await expect(
-    page.getByRole('button', { name: 'Submit saved revision 1', exact: true }),
-  ).toBeFocused();
+  const submitRevision = page.getByRole('button', {
+    name: 'Submit saved revision 1',
+    exact: true,
+  });
+  await expect(submitRevision).toBeEnabled();
+  await submitRevision.focus();
+  await expect(submitRevision).toBeFocused();
   await page.screenshot({
     path: info.outputPath('server-engineering-analysis-dark.png'),
     fullPage: true,

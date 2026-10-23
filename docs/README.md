@@ -5,6 +5,7 @@ Start with [current status](status.md) for implemented capabilities and verifica
 | Need                                         | Guide                                                                                                  |
 | -------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
 | Run SwiftBuild locally                       | [Development](../DEVELOPMENT.md)                                                                       |
+| Develop the Python backend                   | [Python backend setup and commands](../services/backend/README.md)                                     |
 | Host the current web application             | [Self-hosting and recovery](self-hosting/README.md)                                                    |
 | Configure accounts and use server projects   | [Server setup](self-hosting/README.md), [HTTP API](server-api.md)                                      |
 | Understand package ownership                 | [Architecture](architecture/README.md)                                                                 |

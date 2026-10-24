@@ -14,7 +14,7 @@
     "@swiftbuild/architecture-model": "workspace:*",
     "@swiftbuild/graph-engine": "workspace:*",
     "@swiftbuild/capacity-engine": "workspace:*",
-    "zod": "^4.6.5"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@swiftbuild/components-core": "workspace:*"

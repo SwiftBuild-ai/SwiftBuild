@@ -16,7 +16,7 @@
     "@swiftbuild/components-core": "workspace:*",
     "@swiftbuild/design-tokens": "workspace:*",
     "@swiftbuild/ui": "workspace:*",
-    "next": "16.4.0",
+    "next": "16.4.2",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "server-only": "0.0.1"

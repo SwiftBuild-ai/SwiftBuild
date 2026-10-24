@@ -16,6 +16,6 @@
   "dependencies": {
     "@swiftbuild/architecture-schema": "workspace:*",
     "@swiftbuild/components-core": "workspace:*",
-    "zod": "^4.1.12"
+    "zod": "^4.6.7"
   }
 }

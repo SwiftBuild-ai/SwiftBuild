@@ -18,7 +18,7 @@
     "@swiftbuild/capacity-engine": "workspace:*",
     "@swiftbuild/graph-engine": "workspace:*",
     "@swiftbuild/project-format": "workspace:*",
-    "better-auth": "1.7.7",
+    "better-auth": "1.7.20",
     "pg": "8.23.1",
     "tsx": "4.20.6",
     "zod": "^4.6.7"
